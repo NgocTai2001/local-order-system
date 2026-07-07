@@ -54,12 +54,12 @@ Vào Admin, tab `Bàn & QR`, copy link hoặc in QR của `Bàn 01` để lấy 
 
 1. Mở <http://localhost:8080/admin>.
 2. Vào tab `Bàn & QR`.
-3. Copy link hoặc tải/in QR của `Bàn 01`.
+3. Copy link order, tải QR Wi-Fi/QR Order hoặc in sticker của `Bàn 01`.
 4. Mở link `/t/<token>` trên trình duyệt hoặc điện thoại cùng mạng.
 5. Chọn món và đặt món.
 6. Mở <http://localhost:8080/kitchen>.
 7. Kiểm tra bếp nhận order realtime và đổi trạng thái đơn.
-8. Thử `In QR` từng bàn và `In tất cả QR`.
+8. Thử `Print Sticker` từng bàn và `Print All Stickers`.
 
 ## Database
 
@@ -79,21 +79,51 @@ Seed lần đầu:
 
 ## QR bàn
 
-QR không lưu trong database. Admin gọi API thì server sinh QR động từ URL:
+QR không lưu trong database. Admin gọi API thì server sinh QR động cho hai mục đích:
 
 ```text
+WIFI:T:WPA;S:TABLEFLOW_ORDER;P:order1234;;
 http://localhost:8080/t/<token>
 ```
 
-Khi chạy trên Raspberry Pi, QR sẽ dùng host đang truy cập Admin, ví dụ:
+QR Wi-Fi chỉ giúp điện thoại hiện popup kết nối Wi-Fi. QR Order là link dự phòng mở đúng trang đặt món của bàn. Khi chạy trên Raspberry Pi/captive portal, Order URL nên trỏ về địa chỉ local của máy chạy hệ thống, ví dụ:
 
 ```text
 http://192.168.4.1/t/A8KX12QD
 ```
 
-Nếu muốn cố định host cho QR, đặt `PUBLIC_BASE_URL` trong `.env`, ví dụ `http://192.168.4.1`.
+Các biến cấu hình liên quan trong `.env`:
+
+```text
+WIFI_SSID=TABLEFLOW_ORDER
+WIFI_PASSWORD=order1234
+WIFI_SECURITY=WPA
+BASE_ORDER_URL=http://192.168.4.1
+```
+
+Nếu muốn cố định host cho QR order, ưu tiên đặt `BASE_ORDER_URL`. Biến cũ `PUBLIC_BASE_URL` vẫn được hỗ trợ làm fallback.
 
 Reset token trong Admin sẽ làm QR cũ hết hiệu lực.
+
+Response `GET /api/tables/:id/qr` gồm QR Wi-Fi và QR Order:
+
+```json
+{
+  "table_id": 1,
+  "name": "Bàn 01",
+  "wifi": {
+    "ssid": "TABLEFLOW_ORDER",
+    "security": "WPA",
+    "qrText": "WIFI:T:WPA;S:TABLEFLOW_ORDER;P:order1234;;",
+    "qrDataUrl": "data:image/png;base64,..."
+  },
+  "order": {
+    "url": "http://192.168.4.1/t/A8KX12QD",
+    "qrText": "http://192.168.4.1/t/A8KX12QD",
+    "qrDataUrl": "data:image/png;base64,..."
+  }
+}
+```
 
 ## API
 

@@ -1,6 +1,16 @@
+function normalizeBaseUrl(value) {
+  return String(value || '').trim().replace(/\/+$/, '');
+}
+
 function getBaseUrl(req) {
-  if (process.env.PUBLIC_BASE_URL) {
-    return process.env.PUBLIC_BASE_URL;
+  const baseOrderUrl = normalizeBaseUrl(process.env.BASE_ORDER_URL);
+  if (baseOrderUrl) {
+    return baseOrderUrl;
+  }
+
+  const publicBaseUrl = normalizeBaseUrl(process.env.PUBLIC_BASE_URL);
+  if (publicBaseUrl) {
+    return publicBaseUrl;
   }
 
   const forwardedProto = req.get('x-forwarded-proto');

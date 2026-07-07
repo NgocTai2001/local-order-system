@@ -4,6 +4,11 @@ const { httpError } = require('../utils/httpError');
 const { generateToken } = require('../utils/token');
 
 const allowedTableStatuses = new Set(['empty', 'occupied', 'payment_requested', 'paid']);
+const defaultWifiConfig = {
+  ssid: 'TABLEFLOW_ORDER',
+  password: 'order1234',
+  security: 'WPA'
+};
 
 function normalizeTableName(value) {
   const name = String(value || '').trim();
@@ -30,7 +35,70 @@ function normalizeId(value, label = 'Bàn') {
 }
 
 function tableUrl(table, baseUrl) {
-  return `${baseUrl.replace(/\/$/, '')}/t/${encodeURIComponent(table.token)}`;
+  return `${baseUrl.replace(/\/+$/, '')}/t/${encodeURIComponent(table.token)}`;
+}
+
+function normalizeWifiSecurity(value) {
+  const security = String(value || defaultWifiConfig.security).trim();
+
+  if (security.toLowerCase() === 'nopass') {
+    return 'nopass';
+  }
+
+  return security.toUpperCase() || defaultWifiConfig.security;
+}
+
+function escapeWifiQrValue(value) {
+  return String(value).replace(/([\\;,":])/g, '\\$1');
+}
+
+function getWifiConfig() {
+  return {
+    ssid: String(process.env.WIFI_SSID || defaultWifiConfig.ssid).trim() || defaultWifiConfig.ssid,
+    password: String(process.env.WIFI_PASSWORD || defaultWifiConfig.password),
+    security: normalizeWifiSecurity(process.env.WIFI_SECURITY)
+  };
+}
+
+function createWifiQrText(config) {
+  const ssid = escapeWifiQrValue(config.ssid);
+
+  if (config.security === 'nopass') {
+    return `WIFI:T:nopass;S:${ssid};;`;
+  }
+
+  return `WIFI:T:${config.security};S:${ssid};P:${escapeWifiQrValue(config.password)};;`;
+}
+
+async function createWifiQr() {
+  const config = getWifiConfig();
+  const qrText = createWifiQrText(config);
+
+  return {
+    ssid: config.ssid,
+    security: config.security,
+    qrText,
+    qrDataUrl: await createQrDataUrl(qrText)
+  };
+}
+
+async function createTableQr(table, baseUrl, wifiQr) {
+  const url = table.url || tableUrl(table, baseUrl);
+  const orderQrDataUrl = await createQrDataUrl(url);
+
+  return {
+    table_id: table.id,
+    name: table.name,
+    token: table.token,
+    url,
+    qrDataUrl: orderQrDataUrl,
+    wifi: wifiQr,
+    order: {
+      url,
+      qrText: url,
+      qrDataUrl: orderQrDataUrl
+    }
+  };
 }
 
 function serializeTable(table, baseUrl) {
@@ -204,28 +272,17 @@ function regenerateTableToken(id, baseUrl) {
 
 async function getTableQr(id, baseUrl) {
   const table = getTableById(id, baseUrl);
-  const url = table.url || tableUrl(table, baseUrl);
+  const wifiQr = await createWifiQr();
 
-  return {
-    table_id: table.id,
-    name: table.name,
-    token: table.token,
-    url,
-    qrDataUrl: await createQrDataUrl(url)
-  };
+  return createTableQr(table, baseUrl, wifiQr);
 }
 
 async function getAllTableQr(baseUrl) {
   const tables = listTables(baseUrl);
+  const wifiQr = await createWifiQr();
 
   return Promise.all(
-    tables.map(async (table) => ({
-      table_id: table.id,
-      name: table.name,
-      token: table.token,
-      url: table.url,
-      qrDataUrl: await createQrDataUrl(table.url)
-    }))
+    tables.map((table) => createTableQr(table, baseUrl, wifiQr))
   );
 }
 

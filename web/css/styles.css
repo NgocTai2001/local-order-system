@@ -539,7 +539,7 @@ th {
 
 .table-actions {
   flex-wrap: wrap;
-  min-width: 260px;
+  min-width: 360px;
 }
 
 .mono-cell {
@@ -549,15 +549,39 @@ th {
 
 .qr-link-cell {
   display: grid;
-  grid-template-columns: 72px minmax(180px, 1fr);
+  grid-template-columns: auto minmax(220px, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  min-width: 360px;
 }
 
 .qr-link-cell a {
   color: var(--brand-dark);
   overflow-wrap: anywhere;
   text-decoration: underline;
+}
+
+.qr-preview-set {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.qr-preview-tile {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.qr-preview-label,
+.order-url-block span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.qr-preview-label {
+  white-space: nowrap;
 }
 
 .qr-preview {
@@ -579,6 +603,12 @@ th {
   object-fit: contain;
 }
 
+.order-url-block {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
 .print-area {
   display: none;
 }
@@ -586,10 +616,10 @@ th {
 .print-qr-card {
   display: grid;
   justify-items: center;
-  gap: 8px;
+  gap: 6px;
   break-inside: avoid;
-  min-height: 88mm;
-  padding: 12mm 8mm;
+  min-height: 125mm;
+  padding: 8mm;
   border: 1px dashed #111;
   background: #fff;
   color: #111;
@@ -608,12 +638,17 @@ th {
 
 .print-qr-card p {
   margin: 0;
+  font-size: 12px;
 }
 
 .print-qr-card img {
-  width: 46mm;
-  height: 46mm;
+  width: 34mm;
+  height: 34mm;
   object-fit: contain;
+}
+
+.print-qr-footer {
+  font-weight: 800;
 }
 
 .print-qr-card small {
@@ -699,6 +734,7 @@ th {
 
   .qr-link-cell {
     grid-template-columns: 1fr;
+    min-width: 220px;
   }
 }
 

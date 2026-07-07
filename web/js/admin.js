@@ -212,12 +212,14 @@
   }
 
   async function copyLink(table) {
+    const orderUrl = getOrderUrl(table);
+
     try {
       if (navigator.clipboard) {
-        await navigator.clipboard.writeText(table.url);
+        await navigator.clipboard.writeText(orderUrl);
       } else {
         const input = document.createElement('textarea');
-        input.value = table.url;
+        input.value = orderUrl;
         document.body.append(input);
         input.select();
         document.execCommand('copy');
@@ -238,6 +240,11 @@
     return qrByTableId.get(tableIdValue);
   }
 
+  function getOrderUrl(table) {
+    const qr = qrByTableId.get(table.id);
+    return qr?.order?.url || table.url;
+  }
+
   async function loadQrPreviews() {
     try {
       const qrs = await api.getAllTableQr();
@@ -250,22 +257,41 @@
     }
   }
 
-  function createQrPreview(table) {
+  function createQrPreview(table, type, label) {
+    const tile = document.createElement('div');
+    tile.className = 'qr-preview-tile';
+
+    const title = document.createElement('span');
+    title.className = 'qr-preview-label';
+    title.textContent = label;
+
     const wrap = document.createElement('div');
     wrap.className = 'qr-preview';
     const qr = qrByTableId.get(table.id);
+    const qrDataUrl = qr?.[type]?.qrDataUrl;
 
-    if (qr) {
+    if (qrDataUrl) {
       const image = document.createElement('img');
-      image.src = qr.qrDataUrl;
-      image.alt = `QR ${table.name}`;
+      image.src = qrDataUrl;
+      image.alt = `${label} ${table.name}`;
       image.loading = 'lazy';
       wrap.append(image);
     } else {
       wrap.textContent = 'QR';
     }
 
-    return wrap;
+    tile.append(title, wrap);
+    return tile;
+  }
+
+  function createQrPreviewSet(table) {
+    const set = document.createElement('div');
+    set.className = 'qr-preview-set';
+    set.append(
+      createQrPreview(table, 'wifi', 'QR Wi-Fi'),
+      createQrPreview(table, 'order', 'QR Order')
+    );
+    return set;
   }
 
   function createPrintCard(qr) {
@@ -278,17 +304,28 @@
     const title = document.createElement('h2');
     title.textContent = qr.name.toUpperCase();
 
-    const hint = document.createElement('p');
-    hint.textContent = 'Quét mã để gọi món';
+    const wifiHint = document.createElement('p');
+    wifiHint.textContent = 'Bước 1: Quét mã này để kết nối Wi-Fi';
 
-    const image = document.createElement('img');
-    image.src = qr.qrDataUrl;
-    image.alt = `QR ${qr.name}`;
+    const wifiImage = document.createElement('img');
+    wifiImage.src = qr.wifi.qrDataUrl;
+    wifiImage.alt = `QR Wi-Fi ${qr.name}`;
+
+    const orderHint = document.createElement('p');
+    orderHint.textContent = 'Bước 2: Nếu menu chưa tự mở, quét mã này';
+
+    const orderImage = document.createElement('img');
+    orderImage.src = qr.order.qrDataUrl;
+    orderImage.alt = `QR Order ${qr.name}`;
+
+    const footer = document.createElement('p');
+    footer.className = 'print-qr-footer';
+    footer.textContent = 'Đặt món tại bàn của bạn';
 
     const url = document.createElement('small');
-    url.textContent = qr.url;
+    url.textContent = qr.order.url;
 
-    card.append(brand, title, hint, image, url);
+    card.append(brand, title, wifiHint, wifiImage, orderHint, orderImage, footer, url);
     return card;
   }
 
@@ -327,16 +364,23 @@
     }
   }
 
-  async function downloadQr(table) {
+  async function downloadQr(table, type) {
     try {
       const qr = await ensureQr(table.id);
+      const qrData = qr[type];
+      const label = type === 'wifi' ? 'Wi-Fi' : 'Order';
+
+      if (!qrData?.qrDataUrl) {
+        throw new Error(`Không tìm thấy QR ${label}.`);
+      }
+
       const link = document.createElement('a');
-      link.href = qr.qrDataUrl;
-      link.download = `table-${slugify(table.name)}-qr.png`;
+      link.href = qrData.qrDataUrl;
+      link.download = `table-${slugify(table.name)}-${type}-qr.png`;
       document.body.append(link);
       link.click();
       link.remove();
-      setTableMessage(`Đã tải QR ${table.name}.`);
+      setTableMessage(`Đã tải QR ${label} ${table.name}.`);
     } catch (error) {
       setTableMessage(error.message, true);
     }
@@ -409,47 +453,35 @@
       const link = document.createElement('td');
       const linkWrap = document.createElement('div');
       linkWrap.className = 'qr-link-cell';
+      const orderUrl = getOrderUrl(table);
+      const orderBlock = document.createElement('div');
+      orderBlock.className = 'order-url-block';
+      const orderLabel = document.createElement('span');
+      orderLabel.textContent = 'Order URL:';
       const url = document.createElement('a');
-      url.href = table.url;
+      url.href = orderUrl;
       url.target = '_blank';
       url.rel = 'noreferrer';
-      url.textContent = table.url;
-      linkWrap.append(createQrPreview(table), url);
+      url.textContent = orderUrl;
+      orderBlock.append(orderLabel, url);
+      linkWrap.append(createQrPreviewSet(table), orderBlock);
       link.append(linkWrap);
 
       const actions = document.createElement('td');
       const actionRow = document.createElement('div');
       actionRow.className = 'row-actions table-actions';
 
-      const edit = document.createElement('button');
-      edit.className = 'ghost-button';
-      edit.type = 'button';
-      edit.textContent = 'Sửa';
-      edit.addEventListener('click', () => fillTableForm(table));
+      const downloadWifi = document.createElement('button');
+      downloadWifi.className = 'ghost-button';
+      downloadWifi.type = 'button';
+      downloadWifi.textContent = 'Download Wi-Fi QR';
+      downloadWifi.addEventListener('click', () => downloadQr(table, 'wifi'));
 
-      const copy = document.createElement('button');
-      copy.className = 'ghost-button';
-      copy.type = 'button';
-      copy.textContent = 'Copy';
-      copy.addEventListener('click', () => copyLink(table));
-
-      const download = document.createElement('button');
-      download.className = 'ghost-button';
-      download.type = 'button';
-      download.textContent = 'Tải QR';
-      download.addEventListener('click', () => downloadQr(table));
-
-      const print = document.createElement('button');
-      print.className = 'ghost-button';
-      print.type = 'button';
-      print.textContent = 'In QR';
-      print.addEventListener('click', () => printQr(table));
-
-      const reset = document.createElement('button');
-      reset.className = 'ghost-button';
-      reset.type = 'button';
-      reset.textContent = 'Reset token';
-      reset.addEventListener('click', () => regenerateToken(table));
+      const downloadOrder = document.createElement('button');
+      downloadOrder.className = 'ghost-button';
+      downloadOrder.type = 'button';
+      downloadOrder.textContent = 'Download Order QR';
+      downloadOrder.addEventListener('click', () => downloadQr(table, 'order'));
 
       const remove = document.createElement('button');
       remove.className = 'danger-button';
@@ -457,7 +489,7 @@
       remove.textContent = 'Xoá';
       remove.addEventListener('click', () => deleteTable(table));
 
-      actionRow.append(edit, copy, download, print, reset, remove);
+      actionRow.append(downloadWifi, downloadOrder, remove);
       actions.append(actionRow);
       row.append(name, token, link, actions);
       tablesBody.append(row);

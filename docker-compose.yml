@@ -6,7 +6,11 @@ services:
       NODE_ENV: production
       PORT: 3000
       DATABASE_PATH: ${DATABASE_PATH:-/app/data/sqlite/tableflow.db}
+      BASE_ORDER_URL: ${BASE_ORDER_URL:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      WIFI_SSID: ${WIFI_SSID:-TABLEFLOW_ORDER}
+      WIFI_PASSWORD: ${WIFI_PASSWORD:-order1234}
+      WIFI_SECURITY: ${WIFI_SECURITY:-WPA}
     volumes:
       - ./data/sqlite:/app/data/sqlite
     expose:
