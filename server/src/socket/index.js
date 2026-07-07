@@ -27,8 +27,21 @@ function emitOrderUpdated(order) {
   }
 }
 
+function emitOrderStatusChanged(order) {
+  if (io) {
+    io.emit('order:status_changed', {
+      order_id: order.id,
+      id: order.id,
+      status: order.status,
+      table_id: order.table_id,
+      table_name: order.table_name
+    });
+  }
+}
+
 module.exports = {
   configureSocket,
   emitOrderCreated,
+  emitOrderStatusChanged,
   emitOrderUpdated
 };

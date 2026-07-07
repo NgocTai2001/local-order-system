@@ -1,5 +1,6 @@
 (function () {
   const api = window.orderApi;
+
   const form = document.getElementById('menuForm');
   const itemId = document.getElementById('itemId');
   const itemName = document.getElementById('itemName');
@@ -11,11 +12,33 @@
   const adminMessage = document.getElementById('adminMessage');
   const formTitle = document.getElementById('formTitle');
   const formMode = document.getElementById('formMode');
+
+  const tableForm = document.getElementById('tableForm');
+  const tableId = document.getElementById('tableId');
+  const tableName = document.getElementById('tableName');
+  const tableFormTitle = document.getElementById('tableFormTitle');
+  const tableFormMode = document.getElementById('tableFormMode');
+  const bulkTableForm = document.getElementById('bulkTableForm');
+  const bulkPrefix = document.getElementById('bulkPrefix');
+  const bulkFrom = document.getElementById('bulkFrom');
+  const bulkTo = document.getElementById('bulkTo');
+  const tablesBody = document.getElementById('tablesBody');
+  const tableCount = document.getElementById('tableCount');
+  const tableMessage = document.getElementById('tableMessage');
+  const printArea = document.getElementById('printArea');
+
   let menu = [];
+  let tables = [];
+  const qrByTableId = new Map();
 
   function setMessage(text, isError) {
     adminMessage.textContent = text || '';
     adminMessage.style.color = isError ? '#a9371d' : '';
+  }
+
+  function setTableMessage(text, isError) {
+    tableMessage.textContent = text || '';
+    tableMessage.style.color = isError ? '#a9371d' : '';
   }
 
   function resetForm() {
@@ -154,9 +177,375 @@
     }
   }
 
+  function resetTableForm() {
+    tableForm.reset();
+    tableId.value = '';
+    tableFormTitle.textContent = 'Thêm bàn';
+    tableFormMode.textContent = 'Token tự tạo';
+    setTableMessage('');
+  }
+
+  function fillTableForm(table) {
+    tableId.value = table.id;
+    tableName.value = table.name;
+    tableFormTitle.textContent = 'Sửa bàn';
+    tableFormMode.textContent = table.token;
+    setTableMessage('');
+    tableName.focus();
+  }
+
+  function tablePayloadFromForm() {
+    return {
+      name: tableName.value.trim()
+    };
+  }
+
+  function slugify(value) {
+    return String(value)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'table';
+  }
+
+  async function copyLink(table) {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(table.url);
+      } else {
+        const input = document.createElement('textarea');
+        input.value = table.url;
+        document.body.append(input);
+        input.select();
+        document.execCommand('copy');
+        input.remove();
+      }
+      setTableMessage(`Đã copy link ${table.name}.`);
+    } catch (error) {
+      setTableMessage(error.message, true);
+    }
+  }
+
+  async function ensureQr(tableIdValue) {
+    if (!qrByTableId.has(tableIdValue)) {
+      const qr = await api.getTableQr(tableIdValue);
+      qrByTableId.set(tableIdValue, qr);
+    }
+
+    return qrByTableId.get(tableIdValue);
+  }
+
+  async function loadQrPreviews() {
+    try {
+      const qrs = await api.getAllTableQr();
+      for (const qr of qrs) {
+        qrByTableId.set(qr.table_id, qr);
+      }
+      renderTables();
+    } catch (error) {
+      setTableMessage(error.message, true);
+    }
+  }
+
+  function createQrPreview(table) {
+    const wrap = document.createElement('div');
+    wrap.className = 'qr-preview';
+    const qr = qrByTableId.get(table.id);
+
+    if (qr) {
+      const image = document.createElement('img');
+      image.src = qr.qrDataUrl;
+      image.alt = `QR ${table.name}`;
+      image.loading = 'lazy';
+      wrap.append(image);
+    } else {
+      wrap.textContent = 'QR';
+    }
+
+    return wrap;
+  }
+
+  function createPrintCard(qr) {
+    const card = document.createElement('article');
+    card.className = 'print-qr-card';
+
+    const brand = document.createElement('strong');
+    brand.textContent = 'TableFlow';
+
+    const title = document.createElement('h2');
+    title.textContent = qr.name.toUpperCase();
+
+    const hint = document.createElement('p');
+    hint.textContent = 'Quét mã để gọi món';
+
+    const image = document.createElement('img');
+    image.src = qr.qrDataUrl;
+    image.alt = `QR ${qr.name}`;
+
+    const url = document.createElement('small');
+    url.textContent = qr.url;
+
+    card.append(brand, title, hint, image, url);
+    return card;
+  }
+
+  function openPrintView(qrs) {
+    printArea.replaceChildren();
+    for (const qr of qrs) {
+      printArea.append(createPrintCard(qr));
+    }
+
+    document.body.classList.add('print-mode');
+    window.print();
+  }
+
+  function closePrintView() {
+    document.body.classList.remove('print-mode');
+  }
+
+  async function printQr(table) {
+    try {
+      const qr = await ensureQr(table.id);
+      openPrintView([qr]);
+    } catch (error) {
+      setTableMessage(error.message, true);
+    }
+  }
+
+  async function printAllQr() {
+    try {
+      const qrs = await api.getAllTableQr();
+      for (const qr of qrs) {
+        qrByTableId.set(qr.table_id, qr);
+      }
+      openPrintView(qrs);
+    } catch (error) {
+      setTableMessage(error.message, true);
+    }
+  }
+
+  async function downloadQr(table) {
+    try {
+      const qr = await ensureQr(table.id);
+      const link = document.createElement('a');
+      link.href = qr.qrDataUrl;
+      link.download = `table-${slugify(table.name)}-qr.png`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTableMessage(`Đã tải QR ${table.name}.`);
+    } catch (error) {
+      setTableMessage(error.message, true);
+    }
+  }
+
+  async function regenerateToken(table) {
+    const ok = window.confirm(`Reset token và QR của "${table.name}"? QR cũ sẽ không còn hợp lệ.`);
+    if (!ok) {
+      return;
+    }
+
+    try {
+      const updated = await api.regenerateTableToken(table.id);
+      qrByTableId.delete(table.id);
+      setTableMessage(`Đã reset token ${updated.name}.`);
+      await loadTables();
+    } catch (error) {
+      setTableMessage(error.message, true);
+    }
+  }
+
+  async function deleteTable(table) {
+    const ok = window.confirm(`Xoá "${table.name}"?`);
+    if (!ok) {
+      return;
+    }
+
+    try {
+      await api.deleteTable(table.id);
+      qrByTableId.delete(table.id);
+      setTableMessage('Đã xoá bàn.');
+      if (tableId.value === String(table.id)) {
+        resetTableForm();
+      }
+      await loadTables();
+    } catch (error) {
+      setTableMessage(error.message, true);
+    }
+  }
+
+  function renderTables() {
+    tablesBody.replaceChildren();
+    tableCount.textContent = `${tables.length} bàn`;
+
+    if (tables.length === 0) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 4;
+      cell.textContent = 'Chưa có bàn.';
+      row.append(cell);
+      tablesBody.append(row);
+      return;
+    }
+
+    for (const table of tables) {
+      const row = document.createElement('tr');
+
+      const name = document.createElement('td');
+      const title = document.createElement('strong');
+      title.textContent = table.name;
+      const status = document.createElement('span');
+      status.className = 'status-pill';
+      status.textContent = table.status;
+      name.append(title, document.createElement('br'), status);
+
+      const token = document.createElement('td');
+      token.className = 'mono-cell';
+      token.textContent = table.token;
+
+      const link = document.createElement('td');
+      const linkWrap = document.createElement('div');
+      linkWrap.className = 'qr-link-cell';
+      const url = document.createElement('a');
+      url.href = table.url;
+      url.target = '_blank';
+      url.rel = 'noreferrer';
+      url.textContent = table.url;
+      linkWrap.append(createQrPreview(table), url);
+      link.append(linkWrap);
+
+      const actions = document.createElement('td');
+      const actionRow = document.createElement('div');
+      actionRow.className = 'row-actions table-actions';
+
+      const edit = document.createElement('button');
+      edit.className = 'ghost-button';
+      edit.type = 'button';
+      edit.textContent = 'Sửa';
+      edit.addEventListener('click', () => fillTableForm(table));
+
+      const copy = document.createElement('button');
+      copy.className = 'ghost-button';
+      copy.type = 'button';
+      copy.textContent = 'Copy';
+      copy.addEventListener('click', () => copyLink(table));
+
+      const download = document.createElement('button');
+      download.className = 'ghost-button';
+      download.type = 'button';
+      download.textContent = 'Tải QR';
+      download.addEventListener('click', () => downloadQr(table));
+
+      const print = document.createElement('button');
+      print.className = 'ghost-button';
+      print.type = 'button';
+      print.textContent = 'In QR';
+      print.addEventListener('click', () => printQr(table));
+
+      const reset = document.createElement('button');
+      reset.className = 'ghost-button';
+      reset.type = 'button';
+      reset.textContent = 'Reset token';
+      reset.addEventListener('click', () => regenerateToken(table));
+
+      const remove = document.createElement('button');
+      remove.className = 'danger-button';
+      remove.type = 'button';
+      remove.textContent = 'Xoá';
+      remove.addEventListener('click', () => deleteTable(table));
+
+      actionRow.append(edit, copy, download, print, reset, remove);
+      actions.append(actionRow);
+      row.append(name, token, link, actions);
+      tablesBody.append(row);
+    }
+  }
+
+  async function loadTables() {
+    tablesBody.innerHTML = '<tr><td colspan="4">Đang tải bàn...</td></tr>';
+    try {
+      tables = await api.getTables();
+      renderTables();
+      loadQrPreviews();
+    } catch (error) {
+      tablesBody.innerHTML = '';
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 4;
+      cell.textContent = error.message;
+      row.append(cell);
+      tablesBody.append(row);
+    }
+  }
+
+  async function saveTable(event) {
+    event.preventDefault();
+    setTableMessage('Đang lưu...');
+
+    try {
+      if (tableId.value) {
+        await api.updateTable(tableId.value, tablePayloadFromForm());
+        qrByTableId.delete(Number(tableId.value));
+        setTableMessage('Đã cập nhật bàn.');
+      } else {
+        await api.createTable(tablePayloadFromForm());
+        setTableMessage('Đã thêm bàn.');
+      }
+
+      resetTableForm();
+      await loadTables();
+    } catch (error) {
+      setTableMessage(error.message, true);
+    }
+  }
+
+  async function createBulkTables(event) {
+    event.preventDefault();
+    setTableMessage('Đang tạo bàn...');
+
+    try {
+      const created = await api.createTablesBulk({
+        prefix: bulkPrefix.value.trim(),
+        from: Number(bulkFrom.value),
+        to: Number(bulkTo.value)
+      });
+      setTableMessage(`Đã tạo ${created.length} bàn.`);
+      await loadTables();
+    } catch (error) {
+      setTableMessage(error.message, true);
+    }
+  }
+
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-button').forEach((button) => {
+      button.classList.toggle('is-active', button.dataset.tab === tabId);
+    });
+    document.querySelectorAll('.admin-tab-panel').forEach((panel) => {
+      panel.classList.toggle('is-active', panel.id === tabId);
+    });
+
+    if (tabId === 'tablesTab' && tables.length === 0) {
+      loadTables();
+    }
+  }
+
   form.addEventListener('submit', saveItem);
   document.getElementById('resetForm').addEventListener('click', resetForm);
   document.getElementById('reloadAdminMenu').addEventListener('click', loadMenu);
+
+  tableForm.addEventListener('submit', saveTable);
+  bulkTableForm.addEventListener('submit', createBulkTables);
+  document.getElementById('resetTableForm').addEventListener('click', resetTableForm);
+  document.getElementById('reloadTables').addEventListener('click', loadTables);
+  document.getElementById('printAllQr').addEventListener('click', printAllQr);
+  window.addEventListener('afterprint', closePrintView);
+
+  document.querySelectorAll('.tab-button').forEach((button) => {
+    button.addEventListener('click', () => switchTab(button.dataset.tab));
+  });
 
   loadMenu();
 })();

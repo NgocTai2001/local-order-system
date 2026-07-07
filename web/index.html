@@ -3,21 +3,21 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Local Order - Gọi món</title>
+    <title>TableFlow - Gọi món</title>
     <link rel="stylesheet" href="/css/styles.css">
   </head>
   <body>
     <header class="app-header">
       <a class="brand" href="/">
-        <span class="brand-mark">LO</span>
+        <span class="brand-mark">TF</span>
         <span>
-          <strong>Local Order</strong>
-          <small>Bàn <span id="tableToken">A1</span></small>
+          <strong>TableFlow</strong>
+          <small id="tableToken">Quét QR trên bàn</small>
         </span>
       </a>
       <nav class="header-actions" aria-label="Điều hướng">
-        <a href="/kitchen.html">Bếp</a>
-        <a href="/admin.html">Admin</a>
+        <a href="/kitchen">Bếp</a>
+        <a href="/admin">Admin</a>
       </nav>
     </header>
 
@@ -26,7 +26,7 @@
         <div class="section-bar">
           <div>
             <h1 id="menuTitle">Menu</h1>
-            <p>Món đang bán hôm nay</p>
+            <p id="tableNotice">Vui lòng quét QR trên bàn để gọi món.</p>
           </div>
           <button class="ghost-button" id="reloadMenu" type="button">Tải lại</button>
         </div>

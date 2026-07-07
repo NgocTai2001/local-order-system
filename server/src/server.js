@@ -16,7 +16,7 @@ const server = http.createServer(app);
 configureSocket(server);
 
 server.listen(port, () => {
-  console.log(`Local Order API is running on port ${port}`);
+  console.log(`TableFlow API is running on port ${port}`);
 });
 
 function shutdown(signal) {

@@ -156,6 +156,7 @@ a {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
   gap: 20px;
+  padding: 0;
 }
 
 .menu-area,
@@ -424,6 +425,63 @@ a {
   gap: 10px;
 }
 
+.form-grid.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab-button {
+  min-height: 44px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 10px 14px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.tab-button.is-active {
+  border-color: var(--brand);
+  color: var(--brand-dark);
+}
+
+.admin-tab-panel {
+  display: none;
+}
+
+.admin-tab-panel.is-active {
+  display: block;
+}
+
+.toolbar-actions,
+.order-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.compact-button {
+  width: auto;
+}
+
+.order-actions {
+  justify-content: stretch;
+}
+
+.order-actions button {
+  flex: 1 1 120px;
+}
+
 .table-panel {
   overflow: hidden;
 }
@@ -477,6 +535,91 @@ th {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.table-actions {
+  flex-wrap: wrap;
+  min-width: 260px;
+}
+
+.mono-cell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+.qr-link-cell {
+  display: grid;
+  grid-template-columns: 72px minmax(180px, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.qr-link-cell a {
+  color: var(--brand-dark);
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+}
+
+.qr-preview {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.qr-preview img {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+}
+
+.print-area {
+  display: none;
+}
+
+.print-qr-card {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  break-inside: avoid;
+  min-height: 88mm;
+  padding: 12mm 8mm;
+  border: 1px dashed #111;
+  background: #fff;
+  color: #111;
+  text-align: center;
+}
+
+.print-qr-card strong {
+  font-size: 18px;
+}
+
+.print-qr-card h2 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: 0;
+}
+
+.print-qr-card p {
+  margin: 0;
+}
+
+.print-qr-card img {
+  width: 46mm;
+  height: 46mm;
+  object-fit: contain;
+}
+
+.print-qr-card small {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 10px;
 }
 
 @media (max-width: 860px) {
@@ -537,5 +680,51 @@ th {
 
   .row-actions {
     flex-direction: column;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .compact-button,
+  .toolbar-actions button {
+    width: 100%;
+  }
+
+  .form-grid.two {
+    grid-template-columns: 1fr;
+  }
+
+  .qr-link-cell {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  body.print-mode {
+    background: #fff;
+  }
+
+  body.print-mode .app-header,
+  body.print-mode .admin-page > :not(.print-area) {
+    display: none !important;
+  }
+
+  body.print-mode .admin-page {
+    width: 100%;
+    padding: 0;
+  }
+
+  body.print-mode .print-area {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8mm;
   }
 }

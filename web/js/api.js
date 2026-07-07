@@ -55,10 +55,50 @@
       });
     },
     updateOrder(id, status) {
-      return request(`/api/orders/${id}`, {
+      return request(`/api/orders/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status })
       });
+    },
+    getTables() {
+      return request('/api/tables');
+    },
+    getTableByToken(token) {
+      return request(`/api/tables/token/${encodeURIComponent(token)}`);
+    },
+    createTable(payload) {
+      return request('/api/tables', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    },
+    createTablesBulk(payload) {
+      return request('/api/tables/bulk', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    },
+    updateTable(id, payload) {
+      return request(`/api/tables/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+    },
+    deleteTable(id) {
+      return request(`/api/tables/${id}`, {
+        method: 'DELETE'
+      });
+    },
+    regenerateTableToken(id) {
+      return request(`/api/tables/${id}/regenerate-token`, {
+        method: 'POST'
+      });
+    },
+    getTableQr(id) {
+      return request(`/api/tables/${id}/qr`);
+    },
+    getAllTableQr() {
+      return request('/api/tables/qr/all');
     }
   };
 })();

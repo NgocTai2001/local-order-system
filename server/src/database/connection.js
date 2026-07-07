@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 
-const defaultPath = path.resolve(__dirname, '../../../data/orders.db');
+const defaultPath = path.resolve(__dirname, '../../../data/sqlite/tableflow.db');
 const databasePath = process.env.DATABASE_PATH || defaultPath;
 
 fs.mkdirSync(path.dirname(databasePath), { recursive: true });

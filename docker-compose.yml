@@ -5,9 +5,10 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_PATH: ${DATABASE_PATH:-/app/data/orders.db}
+      DATABASE_PATH: ${DATABASE_PATH:-/app/data/sqlite/tableflow.db}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
     volumes:
-      - ./data:/app/data
+      - ./data/sqlite:/app/data/sqlite
     expose:
       - "3000"
     restart: unless-stopped

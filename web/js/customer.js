@@ -7,14 +7,23 @@
   const orderMessage = document.getElementById('orderMessage');
   const submitOrder = document.getElementById('submitOrder');
   const tableTokenLabel = document.getElementById('tableToken');
+  const tableNotice = document.getElementById('tableNotice');
 
   const params = new URLSearchParams(window.location.search);
-  const tableToken = params.get('table') || params.get('ban') || localStorage.getItem('tableToken') || 'A1';
+  const tableToken = getTableTokenFromUrl();
   const cart = new Map();
   let menu = [];
+  let currentTable = null;
 
-  localStorage.setItem('tableToken', tableToken);
-  tableTokenLabel.textContent = tableToken;
+  function getTableTokenFromUrl() {
+    const match = window.location.pathname.match(/^\/t\/([^/]+)$/);
+
+    if (match) {
+      return decodeURIComponent(match[1]);
+    }
+
+    return params.get('table') || params.get('ban') || '';
+  }
 
   function initials(name) {
     return name
@@ -138,7 +147,7 @@
 
     cartCount.textContent = totalQuantity ? `${totalQuantity} món` : 'Chưa có món';
     cartTotal.textContent = api.formatCurrency(totalPrice);
-    submitOrder.disabled = entries.length === 0;
+    submitOrder.disabled = entries.length === 0 || !currentTable;
 
     if (entries.length === 0) {
       const empty = document.createElement('p');
@@ -170,6 +179,16 @@
   }
 
   async function loadMenu() {
+    if (!currentTable) {
+      menuList.innerHTML = '';
+      const empty = document.createElement('p');
+      empty.className = 'empty-state';
+      empty.textContent = 'Vui lòng quét QR trên bàn để gọi món.';
+      menuList.append(empty);
+      renderCart();
+      return;
+    }
+
     menuList.innerHTML = '<p class="empty-state">Đang tải menu...</p>';
     try {
       menu = await api.getMenu(false);
@@ -184,6 +203,11 @@
   }
 
   async function placeOrder() {
+    if (!currentTable) {
+      setMessage('Vui lòng quét QR trên bàn để gọi món.', true);
+      return;
+    }
+
     const items = Array.from(cart.values()).map((entry) => ({
       menu_item_id: entry.item.id,
       quantity: entry.quantity
@@ -198,12 +222,12 @@
 
     try {
       await api.createOrder({
-        table_token: tableToken,
+        table_id: currentTable.id,
         items
       });
       cart.clear();
       render();
-      setMessage('Đặt món thành công');
+      setMessage('Đặt món thành công. Bếp đã nhận đơn của bạn.');
     } catch (error) {
       setMessage(error.message, true);
       submitOrder.disabled = false;
@@ -213,5 +237,30 @@
   document.getElementById('reloadMenu').addEventListener('click', loadMenu);
   submitOrder.addEventListener('click', placeOrder);
 
-  loadMenu();
+  async function initTable() {
+    if (!tableToken) {
+      tableTokenLabel.textContent = 'Quét QR trên bàn';
+      tableNotice.textContent = 'Vui lòng quét QR trên bàn để gọi món.';
+      await loadMenu();
+      return;
+    }
+
+    tableTokenLabel.textContent = 'Đang kiểm tra bàn...';
+    tableNotice.textContent = 'Đang nhận diện bàn từ QR.';
+
+    try {
+      currentTable = await api.getTableByToken(tableToken);
+      tableTokenLabel.textContent = currentTable.name;
+      tableNotice.textContent = `Bạn đang gọi món tại: ${currentTable.name}`;
+      await loadMenu();
+    } catch (error) {
+      currentTable = null;
+      tableTokenLabel.textContent = 'QR không hợp lệ';
+      tableNotice.textContent = error.message;
+      setMessage(error.message, true);
+      await loadMenu();
+    }
+  }
+
+  initTable();
 })();

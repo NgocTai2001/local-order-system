@@ -3,81 +3,162 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Local Order - Admin</title>
+    <title>TableFlow - Admin</title>
     <link rel="stylesheet" href="/css/styles.css">
   </head>
   <body>
     <header class="app-header">
       <a class="brand" href="/">
-        <span class="brand-mark">LO</span>
+        <span class="brand-mark">TF</span>
         <span>
           <strong>Admin</strong>
-          <small>Quản lý menu</small>
+          <small>Menu, bàn và QR</small>
         </span>
       </a>
       <nav class="header-actions" aria-label="Điều hướng">
         <a href="/">Gọi món</a>
-        <a href="/kitchen.html">Bếp</a>
+        <a href="/kitchen">Bếp</a>
       </nav>
     </header>
 
-    <main class="admin-shell">
-      <section class="editor-panel" aria-labelledby="formTitle">
-        <div class="section-bar compact">
-          <div>
-            <h1 id="formTitle">Thêm món</h1>
-            <p id="formMode">Nhập thông tin món</p>
-          </div>
-        </div>
+    <main class="page-shell admin-page">
+      <div class="admin-tabs" role="tablist" aria-label="Admin">
+        <button class="tab-button is-active" type="button" data-tab="menuTab">Menu</button>
+        <button class="tab-button" type="button" data-tab="tablesTab">Bàn & QR</button>
+      </div>
 
-        <form id="menuForm" class="menu-form">
-          <input type="hidden" id="itemId">
-          <label>
-            Tên món
-            <input id="itemName" name="name" type="text" maxlength="80" required>
-          </label>
-          <label>
-            Giá
-            <input id="itemPrice" name="price" type="number" min="0" step="1000" required>
-          </label>
-          <label>
-            Ảnh
-            <input id="itemImage" name="image" type="url" placeholder="https://...">
-          </label>
-          <label class="checkbox-row">
-            <input id="itemAvailable" name="available" type="checkbox" checked>
-            Đang bán
-          </label>
-          <div class="form-actions">
-            <button class="primary-button" type="submit">Lưu món</button>
-            <button class="ghost-button" id="resetForm" type="button">Làm mới</button>
-          </div>
-          <p class="message" id="adminMessage" aria-live="polite"></p>
-        </form>
+      <section class="admin-tab-panel is-active" id="menuTab" aria-labelledby="menuAdminTitle">
+        <div class="admin-shell">
+          <section class="editor-panel" aria-labelledby="formTitle">
+            <div class="section-bar compact">
+              <div>
+                <h1 id="formTitle">Thêm món</h1>
+                <p id="formMode">Nhập thông tin món</p>
+              </div>
+            </div>
+
+            <form id="menuForm" class="menu-form">
+              <input type="hidden" id="itemId">
+              <label>
+                Tên món
+                <input id="itemName" name="name" type="text" maxlength="80" required>
+              </label>
+              <label>
+                Giá
+                <input id="itemPrice" name="price" type="number" min="0" step="1000" required>
+              </label>
+              <label>
+                Ảnh
+                <input id="itemImage" name="image" type="url" placeholder="https://...">
+              </label>
+              <label class="checkbox-row">
+                <input id="itemAvailable" name="available" type="checkbox" checked>
+                Đang bán
+              </label>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Lưu món</button>
+                <button class="ghost-button" id="resetForm" type="button">Làm mới</button>
+              </div>
+              <p class="message" id="adminMessage" aria-live="polite"></p>
+            </form>
+          </section>
+
+          <section class="table-panel" aria-labelledby="menuAdminTitle">
+            <div class="section-bar">
+              <div>
+                <h2 id="menuAdminTitle">Menu</h2>
+                <p id="adminCount">0 món</p>
+              </div>
+              <button class="ghost-button" id="reloadAdminMenu" type="button">Tải lại</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Món</th>
+                    <th>Giá</th>
+                    <th>Trạng thái</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="adminMenuBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
       </section>
 
-      <section class="table-panel" aria-labelledby="menuAdminTitle">
-        <div class="section-bar">
-          <div>
-            <h2 id="menuAdminTitle">Menu</h2>
-            <p id="adminCount">0 món</p>
-          </div>
-          <button class="ghost-button" id="reloadAdminMenu" type="button">Tải lại</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Món</th>
-                <th>Giá</th>
-                <th>Trạng thái</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="adminMenuBody"></tbody>
-          </table>
+      <section class="admin-tab-panel" id="tablesTab" aria-labelledby="tableAdminTitle">
+        <div class="admin-shell">
+          <section class="editor-panel" aria-labelledby="tableFormTitle">
+            <div class="section-bar compact">
+              <div>
+                <h1 id="tableFormTitle">Thêm bàn</h1>
+                <p id="tableFormMode">Token tự tạo</p>
+              </div>
+            </div>
+
+            <form id="tableForm" class="menu-form">
+              <input type="hidden" id="tableId">
+              <label>
+                Tên bàn
+                <input id="tableName" name="name" type="text" maxlength="80" placeholder="Bàn 11" required>
+              </label>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Lưu bàn</button>
+                <button class="ghost-button" id="resetTableForm" type="button">Làm mới</button>
+              </div>
+            </form>
+
+            <form id="bulkTableForm" class="menu-form table-bulk-form">
+              <label>
+                Tiền tố
+                <input id="bulkPrefix" name="prefix" type="text" value="Bàn" maxlength="40" required>
+              </label>
+              <div class="form-grid two">
+                <label>
+                  Từ
+                  <input id="bulkFrom" name="from" type="number" min="1" value="11" required>
+                </label>
+                <label>
+                  Đến
+                  <input id="bulkTo" name="to" type="number" min="1" value="20" required>
+                </label>
+              </div>
+              <button class="ghost-button" type="submit">Tạo nhiều bàn</button>
+              <p class="message" id="tableMessage" aria-live="polite"></p>
+            </form>
+          </section>
+
+          <section class="table-panel" aria-labelledby="tableAdminTitle">
+            <div class="section-bar">
+              <div>
+                <h2 id="tableAdminTitle">Bàn & QR</h2>
+                <p id="tableCount">0 bàn</p>
+              </div>
+              <div class="toolbar-actions">
+                <button class="ghost-button" id="reloadTables" type="button">Tải lại</button>
+                <button class="primary-button compact-button" id="printAllQr" type="button">In tất cả QR</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="tables-admin-table">
+                <thead>
+                  <tr>
+                    <th>Bàn</th>
+                    <th>Token</th>
+                    <th>Link & QR</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="tablesBody"></tbody>
+              </table>
+            </div>
+          </section>
         </div>
       </section>
+
+      <section class="print-area" id="printArea" aria-hidden="true"></section>
     </main>
 
     <script src="/js/api.js"></script>

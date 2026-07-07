@@ -1,26 +1,16 @@
-# Local Order System - MVP (Pi3B)
+# TableFlow - Local Order System MVP (Pi3B)
 
-Hệ thống order món ăn chạy local bằng Docker, tối ưu cho mô hình nhỏ như quán ăn dùng Raspberry Pi 3B.
+Hệ thống order món ăn chạy local bằng Docker, tối ưu cho mô hình nhỏ như quán ăn dùng Raspberry Pi 3B. Khách quét QR ở bàn, web tự nhận diện bàn và gửi đơn realtime cho bếp.
 
 ## Cấu trúc project
 
 ```text
 local-order-system/
 ├── docker-compose.yml
-├── .env.example
 ├── server/
 │   ├── Dockerfile
 │   ├── package.json
 │   └── src/
-│       ├── app.js
-│       ├── server.js
-│       ├── controllers/
-│       ├── database/
-│       ├── middleware/
-│       ├── routes/
-│       ├── services/
-│       ├── socket/
-│       └── utils/
 ├── web/
 │   ├── index.html
 │   ├── kitchen.html
@@ -30,61 +20,105 @@ local-order-system/
 ├── nginx/
 │   └── default.conf
 └── data/
-    └── orders.db
+    └── sqlite/
+        └── tableflow.db
 ```
 
-## Chạy bằng Docker
+## Chạy local
 
 ```bash
 docker compose up -d --build
 ```
 
-Mặc định hệ thống chạy tại:
-
-- Khách gọi món: <http://localhost:8080/?table=A1>
-- Bếp: <http://localhost:8080/kitchen.html>
-- Admin: <http://localhost:8080/admin.html>
-
-Nếu muốn đổi port public:
+Xem log:
 
 ```bash
-cp .env.example .env
-# sửa APP_PORT trong .env
-docker compose up -d --build
+docker compose logs -f
 ```
+
+Dừng:
+
+```bash
+docker compose down
+```
+
+## Truy cập
+
+- Customer QR: <http://localhost:8080/t/TOKEN_CUA_BAN>
+- Kitchen: <http://localhost:8080/kitchen>
+- Admin: <http://localhost:8080/admin>
+
+Vào Admin, tab `Bàn & QR`, copy link hoặc in QR của `Bàn 01` để lấy token thật.
+
+## Test flow
+
+1. Mở <http://localhost:8080/admin>.
+2. Vào tab `Bàn & QR`.
+3. Copy link hoặc tải/in QR của `Bàn 01`.
+4. Mở link `/t/<token>` trên trình duyệt hoặc điện thoại cùng mạng.
+5. Chọn món và đặt món.
+6. Mở <http://localhost:8080/kitchen>.
+7. Kiểm tra bếp nhận order realtime và đổi trạng thái đơn.
+8. Thử `In QR` từng bàn và `In tất cả QR`.
 
 ## Database
 
-SQLite tự tạo khi API khởi động lần đầu tại `data/orders.db`.
+SQLite tự tạo khi API khởi động lần đầu tại `data/sqlite/tableflow.db`.
 
-Các bảng:
+Các bảng chính:
 
-- `menu_items`
-- `orders`
-- `order_items`
+- `tables`: tên bàn, token QR riêng, trạng thái bàn.
+- `menu_items`: món, giá, ảnh URL, trạng thái đang bán.
+- `orders`: đơn hàng theo `table_id`.
+- `order_items`: món trong đơn, lưu snapshot tên/giá tại thời điểm đặt.
 
-Menu được seed sẵn:
+Seed lần đầu:
 
-- Bún bò
-- Phở
-- Cơm tấm
-- Bánh mì
-- Trà đào
-- Coca
-- Pepsi
+- 10 bàn: `Bàn 01` đến `Bàn 10`, mỗi bàn có token random riêng.
+- 7 món mẫu: Bún bò, Phở bò, Cơm tấm, Bánh mì, Trà đào, Coca, Pepsi.
+
+## QR bàn
+
+QR không lưu trong database. Admin gọi API thì server sinh QR động từ URL:
+
+```text
+http://localhost:8080/t/<token>
+```
+
+Khi chạy trên Raspberry Pi, QR sẽ dùng host đang truy cập Admin, ví dụ:
+
+```text
+http://192.168.4.1/t/A8KX12QD
+```
+
+Nếu muốn cố định host cho QR, đặt `PUBLIC_BASE_URL` trong `.env`, ví dụ `http://192.168.4.1`.
+
+Reset token trong Admin sẽ làm QR cũ hết hiệu lực.
 
 ## API
 
 ```text
 GET    /api/menu
+GET    /api/menu?all=1
 POST   /api/menu
+PUT    /api/menu/:id
 PATCH  /api/menu/:id
 DELETE /api/menu/:id
+
+GET    /api/tables
+GET    /api/tables/token/:token
+POST   /api/tables
+POST   /api/tables/bulk
+PUT    /api/tables/:id
+DELETE /api/tables/:id
+POST   /api/tables/:id/regenerate-token
+GET    /api/tables/:id/qr
+GET    /api/tables/qr/all
 
 POST   /api/orders
 GET    /api/orders
 GET    /api/orders?status=pending
-PATCH  /api/orders/:id
+PATCH  /api/orders/:id/status
 ```
 
 Ví dụ tạo order:
@@ -93,7 +127,7 @@ Ví dụ tạo order:
 curl -X POST http://localhost:8080/api/orders \
   -H "Content-Type: application/json" \
   -d '{
-    "table_token": "A1",
+    "table_id": 1,
     "items": [
       { "menu_item_id": 1, "quantity": 2 },
       { "menu_item_id": 5, "quantity": 1 }
@@ -101,22 +135,40 @@ curl -X POST http://localhost:8080/api/orders \
   }'
 ```
 
-Ví dụ hoàn thành order:
+Ví dụ cập nhật trạng thái:
 
 ```bash
-curl -X PATCH http://localhost:8080/api/orders/1 \
+curl -X PATCH http://localhost:8080/api/orders/1/status \
   -H "Content-Type: application/json" \
-  -d '{ "status": "completed" }'
+  -d '{ "status": "ready" }'
+```
+
+Trạng thái order:
+
+```text
+pending
+cooking
+ready
+served
+cancelled
+paid
 ```
 
 ## Realtime
 
 Khi khách đặt món, API lưu order vào SQLite và emit Socket.IO event `order:new`.
+
+Khi bếp đổi trạng thái, API emit:
+
+- `order:updated`
+- `order:status_changed`
+
 Trang bếp đang mở sẽ tự cập nhật, không cần refresh.
 
 ## Ghi chú Raspberry Pi 3B
 
-- Dùng SQLite file local trong `data/`, không cần MySQL/PostgreSQL/Redis.
-- Nginx phục vụ file tĩnh và reverse proxy API để giảm tải cho NodeJS.
-- API dùng ít dependency, logic đồng bộ đơn giản, phù hợp MVP local.
+- Dùng SQLite file local trong `data/sqlite/`, không cần MySQL/PostgreSQL/Redis.
+- Nginx phục vụ file tĩnh và reverse proxy API/Socket.IO để giảm tải cho NodeJS.
+- Frontend dùng HTML/CSS/Vanilla JS, không có build step.
+- QR chỉ sinh khi admin cần xem/tải/in.
 - Nếu build Docker trên Pi chậm, hãy đảm bảo Pi có swap đủ lớn vì package SQLite native cần biên dịch khi không có prebuilt binary phù hợp.
