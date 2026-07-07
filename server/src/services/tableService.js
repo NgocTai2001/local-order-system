@@ -280,10 +280,13 @@ async function getTableQr(id, baseUrl) {
 async function getAllTableQr(baseUrl) {
   const tables = listTables(baseUrl);
   const wifiQr = await createWifiQr();
+  const output = [];
 
-  return Promise.all(
-    tables.map((table) => createTableQr(table, baseUrl, wifiQr))
-  );
+  for (const table of tables) {
+    output.push(await createTableQr(table, baseUrl, wifiQr));
+  }
+
+  return output;
 }
 
 module.exports = {

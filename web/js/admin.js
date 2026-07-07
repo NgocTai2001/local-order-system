@@ -232,7 +232,9 @@
   }
 
   async function ensureQr(tableIdValue) {
-    if (!qrByTableId.has(tableIdValue)) {
+    const cachedQr = qrByTableId.get(tableIdValue);
+
+    if (!cachedQr?.wifi?.qrDataUrl || !cachedQr?.order?.qrDataUrl) {
       const qr = await api.getTableQr(tableIdValue);
       qrByTableId.set(tableIdValue, qr);
     }
@@ -253,7 +255,7 @@
       }
       renderTables();
     } catch (error) {
-      setTableMessage(error.message, true);
+      setTableMessage('Không tải trước QR được, bấm Download để tạo QR từng bàn.', true);
     }
   }
 
