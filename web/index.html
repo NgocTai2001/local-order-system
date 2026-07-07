@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Local Order - Gọi món</title>
+    <link rel="stylesheet" href="/css/styles.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="/">
+        <span class="brand-mark">LO</span>
+        <span>
+          <strong>Local Order</strong>
+          <small>Bàn <span id="tableToken">A1</span></small>
+        </span>
+      </a>
+      <nav class="header-actions" aria-label="Điều hướng">
+        <a href="/kitchen.html">Bếp</a>
+        <a href="/admin.html">Admin</a>
+      </nav>
+    </header>
+
+    <main class="customer-shell">
+      <section class="menu-area" aria-labelledby="menuTitle">
+        <div class="section-bar">
+          <div>
+            <h1 id="menuTitle">Menu</h1>
+            <p>Món đang bán hôm nay</p>
+          </div>
+          <button class="ghost-button" id="reloadMenu" type="button">Tải lại</button>
+        </div>
+        <div class="menu-list" id="menuList" aria-live="polite"></div>
+      </section>
+
+      <aside class="cart-area" aria-labelledby="cartTitle">
+        <div class="section-bar compact">
+          <div>
+            <h2 id="cartTitle">Giỏ hàng</h2>
+            <p id="cartCount">Chưa có món</p>
+          </div>
+        </div>
+        <div class="cart-list" id="cartItems"></div>
+        <div class="cart-footer">
+          <div class="total-row">
+            <span>Tổng</span>
+            <strong id="cartTotal">0 đ</strong>
+          </div>
+          <button class="primary-button" id="submitOrder" type="button" disabled>Đặt món</button>
+          <p class="message" id="orderMessage" aria-live="polite"></p>
+        </div>
+      </aside>
+    </main>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/customer.js"></script>
+  </body>
+</html>

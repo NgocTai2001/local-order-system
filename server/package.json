@@ -1,0 +1,20 @@
+{
+  "name": "local-order-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local restaurant order API using Express, Socket.IO and SQLite.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.9.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

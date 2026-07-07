@@ -1,0 +1,7 @@
+.git
+.agents
+.codex
+data/*.db
+data/*.db-*
+server/node_modules
+*.log
