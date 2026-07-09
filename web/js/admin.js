@@ -845,6 +845,29 @@
     });
   }
 
+  function createTrashIcon() {
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNs, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+
+    const lines = [
+      'M3 6h18',
+      'M8 6V4h8v2',
+      'M6 6l1 14h10l1-14',
+      'M10 11v5',
+      'M14 11v5'
+    ];
+
+    for (const value of lines) {
+      const path = document.createElementNS(svgNs, 'path');
+      path.setAttribute('d', value);
+      svg.append(path);
+    }
+
+    return svg;
+  }
+
   function createStatusPill(status) {
     const pill = document.createElement('span');
     pill.className = `status-pill table-status-${status || 'unknown'}`;
@@ -930,6 +953,14 @@
     for (const order of orders) {
       const card = document.createElement('article');
       card.className = 'bill-order-card';
+      const canRemoveOrder = canCancelOrder;
+
+      if (canRemoveOrder) {
+        card.classList.add('has-delete');
+      }
+
+      const content = document.createElement('div');
+      content.className = 'bill-order-content';
 
       const header = document.createElement('div');
       header.className = 'bill-order-head';
@@ -943,15 +974,6 @@
       const orderActions = document.createElement('div');
       orderActions.className = 'bill-order-actions';
       orderActions.append(meta);
-
-      if (canCancelOrder) {
-        const remove = document.createElement('button');
-        remove.className = 'danger-button compact-button bill-remove-order-button';
-        remove.type = 'button';
-        remove.textContent = 'Xóa đơn';
-        remove.addEventListener('click', () => cancelBillOrder(order));
-        orderActions.append(remove);
-      }
 
       header.append(title, orderActions);
 
@@ -970,7 +992,20 @@
         list.append(row);
       }
 
-      card.append(header, list);
+      content.append(header, list);
+      card.append(content);
+
+      if (canRemoveOrder) {
+        const remove = document.createElement('button');
+        remove.className = 'bill-remove-order-button';
+        remove.type = 'button';
+        remove.title = 'Xóa đơn';
+        remove.setAttribute('aria-label', `Xóa đơn #${order.id}`);
+        remove.append(createTrashIcon());
+        remove.addEventListener('click', () => cancelBillOrder(order));
+        card.append(remove);
+      }
+
       billOrders.append(card);
     }
   }

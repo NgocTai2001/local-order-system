@@ -218,11 +218,7 @@
         price.textContent = api.formatCurrency(item.subtotal || 0);
         info.append(name, price);
 
-        const status = document.createElement('span');
-        status.className = `ordered-status ordered-status-${order.status || 'unknown'}`;
-        status.textContent = statusLabel(order.status);
-
-        row.append(quantity, info, status);
+        row.append(quantity, info);
         items.append(row);
       }
 

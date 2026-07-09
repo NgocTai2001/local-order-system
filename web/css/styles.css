@@ -404,8 +404,9 @@ a {
 }
 
 .ordered-order-card.has-delete {
-  grid-template-columns: minmax(0, 1fr) 32px;
+  grid-template-columns: minmax(0, 1fr) 36px;
   align-items: center;
+  column-gap: 10px;
 }
 
 .ordered-order-content {
@@ -417,12 +418,11 @@ a {
 .ordered-order-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  align-items: center;
   gap: 10px;
 }
 
 .ordered-order-head span {
-  justify-self: end;
   color: var(--muted);
   font-size: 13px;
   text-align: right;
@@ -462,7 +462,7 @@ a {
 
 .ordered-item-row {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto;
+  grid-template-columns: 24px minmax(0, 1fr);
   gap: 8px;
   align-items: start;
 }
@@ -483,34 +483,6 @@ a {
 
 .ordered-item-info small {
   color: var(--muted);
-}
-
-.ordered-status {
-  justify-self: end;
-  border-radius: 999px;
-  padding: 3px 8px;
-  background: var(--surface-soft);
-  color: var(--brand-dark);
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.ordered-status-cooking {
-  background: #fff6d8;
-  color: var(--warning);
-}
-
-.ordered-status-ready,
-.ordered-status-served,
-.ordered-status-paid {
-  background: #e7f3ed;
-  color: var(--brand-dark);
-}
-
-.ordered-status-cancelled {
-  background: #fff2ed;
-  color: #a9371d;
 }
 
 .compact-empty {
@@ -966,6 +938,18 @@ th {
   background: #fff;
 }
 
+.bill-order-card.has-delete {
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: center;
+  column-gap: 10px;
+}
+
+.bill-order-content {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
 .bill-order-head {
   display: flex;
   justify-content: space-between;
@@ -986,8 +970,29 @@ th {
 }
 
 .bill-remove-order-button {
-  min-height: 34px;
-  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  justify-self: end;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  padding: 0;
+  border: 1px solid #ffd1c2;
+  border-radius: 8px;
+  background: #fff2ed;
+  color: #a9371d;
+}
+
+.bill-remove-order-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .bill-item-list {
@@ -1011,6 +1016,7 @@ th {
 
 .bill-item-list small {
   color: var(--muted);
+  padding-right: 10px;
   white-space: nowrap;
 }
 
@@ -1081,6 +1087,14 @@ th {
 
 .bill-pay-button {
   width: 100%;
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.bill-pay-button:hover {
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
 }
 
 .restaurant-preview {
@@ -1291,17 +1305,24 @@ th {
 
   .bill-order-head {
     align-items: flex-start;
-    flex-direction: column;
   }
 
   .bill-order-actions {
-    width: 100%;
-    align-items: stretch;
-    justify-content: flex-start;
+    justify-content: flex-end;
+  }
+
+  .bill-order-card.has-delete {
+    grid-template-columns: minmax(0, 1fr) 36px;
+    align-items: center;
   }
 
   .ordered-order-head {
     gap: 8px;
+  }
+
+  .ordered-order-card.has-delete {
+    grid-template-columns: minmax(0, 1fr) 36px;
+    align-items: center;
   }
 
   .ordered-order-head span {
@@ -1310,11 +1331,6 @@ th {
 
   .ordered-item-row {
     grid-template-columns: 22px minmax(0, 1fr);
-  }
-
-  .ordered-status {
-    grid-column: 2;
-    justify-self: start;
   }
 }
 
