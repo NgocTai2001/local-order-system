@@ -2,7 +2,12 @@ const orderService = require('../services/orderService');
 const { emitOrderCreated, emitOrderStatusChanged, emitOrderUpdated } = require('../socket');
 
 function listOrders(req, res) {
-  res.json(orderService.listOrders({ status: req.query.status }));
+  const kitchen =
+    req.query.kitchen === '1' ||
+    req.query.kitchen === 'true' ||
+    req.query.active === '1';
+
+  res.json(orderService.listOrders({ status: req.query.status, kitchen }));
 }
 
 function createOrder(req, res) {

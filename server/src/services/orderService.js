@@ -1,7 +1,9 @@
 const { db } = require('../database');
+const sessionService = require('./sessionService');
 const { httpError } = require('../utils/httpError');
 
 const allowedStatuses = new Set(['pending', 'cooking', 'ready', 'served', 'cancelled', 'paid']);
+const kitchenStatuses = ['pending', 'cooking', 'ready'];
 
 function normalizeId(value, label = 'ID') {
   const id = Number(value);
@@ -58,6 +60,7 @@ function mapOrderRows(rows) {
       orders.set(row.id, {
         id: row.id,
         order_id: row.id,
+        session_id: row.session_id,
         table_id: row.table_id,
         table_token: tableToken,
         table_name: row.table_name || (tableToken ? `Bàn ${tableToken}` : 'Bàn không rõ'),
@@ -92,6 +95,7 @@ function orderSelectSql(where = '') {
   return `
     SELECT
       o.id,
+      o.session_id,
       o.table_id,
       o.table_token AS legacy_table_token,
       o.status,
@@ -128,19 +132,24 @@ function getOrderById(id) {
   return mapOrderRows(rows)[0];
 }
 
-function listOrders({ status } = {}) {
+function listOrders({ status, kitchen = false } = {}) {
   const values = [];
   let where = '';
+  let orderBy = 'ORDER BY o.created_at DESC, o.id DESC, oi.id ASC';
 
   if (status) {
     const nextStatus = normalizeStatus(status);
     where = 'WHERE o.status = ?';
     values.push(nextStatus);
+  } else if (kitchen) {
+    where = `WHERE o.status IN (${kitchenStatuses.map(() => '?').join(', ')})`;
+    values.push(...kitchenStatuses);
+    orderBy = 'ORDER BY o.created_at ASC, o.id ASC, oi.id ASC';
   }
 
   const rows = db.prepare(`
     ${orderSelectSql(where)}
-    ORDER BY o.created_at DESC, o.id DESC, oi.id ASC
+    ${orderBy}
   `).all(...values);
 
   return mapOrderRows(rows);
@@ -178,6 +187,7 @@ function createOrder(input) {
   const items = normalizeOrderItems(input.items);
 
   const createTransaction = db.transaction(() => {
+    const session = sessionService.getOrCreateOpenSession(table.id);
     const ids = items.map((item) => item.menu_item_id);
     const placeholders = ids.map(() => '?').join(', ');
     const availableItems = db.prepare(`
@@ -193,9 +203,9 @@ function createOrder(input) {
     const menuById = new Map(availableItems.map((item) => [item.id, item]));
 
     const orderResult = db.prepare(`
-      INSERT INTO orders (table_id, table_token, status, updated_at)
-      VALUES (?, ?, 'pending', datetime('now'))
-    `).run(table.id, table.token);
+      INSERT INTO orders (session_id, table_id, table_token, status, updated_at)
+      VALUES (?, ?, ?, 'pending', datetime('now'))
+    `).run(session.id, table.id, table.token);
 
     const insertItem = db.prepare(`
       INSERT INTO order_items (

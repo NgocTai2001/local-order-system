@@ -3,22 +3,18 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>TableFlow - Bếp</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <title>Pho Viet - Bếp</title>
+    <link rel="stylesheet" href="/css/styles.css?v=6">
   </head>
   <body>
     <header class="app-header">
-      <a class="brand" href="/">
-        <span class="brand-mark">TF</span>
+      <div class="brand">
+        <span class="brand-mark" data-restaurant-mark>PV</span>
         <span>
-          <strong>Bếp</strong>
-          <small id="connectionStatus">Đang kết nối</small>
+          <strong data-restaurant-name>Pho Viet</strong>
+          <small id="connectionStatus" hidden></small>
         </span>
-      </a>
-      <nav class="header-actions" aria-label="Điều hướng">
-        <a href="/">Gọi món</a>
-        <a href="/admin">Admin</a>
-      </nav>
+      </div>
     </header>
 
     <main class="page-shell">
@@ -27,13 +23,12 @@
           <h1>Đơn trong bếp</h1>
           <p id="orderSummary">0 đơn</p>
         </div>
-        <button class="ghost-button" id="reloadOrders" type="button">Tải lại</button>
       </div>
       <section class="orders-grid" id="ordersList" aria-live="polite"></section>
     </main>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/kitchen.js"></script>
+    <script src="/js/api.js?v=5"></script>
+    <script src="/js/kitchen.js?v=7"></script>
   </body>
 </html>

@@ -1,6 +1,18 @@
 const { db } = require('../database');
 const { httpError } = require('../utils/httpError');
 
+const allowedCategories = new Set(['food', 'drink']);
+
+function normalizeCategory(value) {
+  const category = String(value || '').trim();
+
+  if (!allowedCategories.has(category)) {
+    throw httpError(400, 'Loại món phải là đồ ăn hoặc nước uống.');
+  }
+
+  return category;
+}
+
 function toAvailability(value, fallback = true) {
   if (value === undefined || value === null || value === '') {
     return fallback;
@@ -40,6 +52,10 @@ function normalizeMenuInput(input, { partial = false } = {}) {
     data.price = price;
   }
 
+  if (!partial || input.category !== undefined) {
+    data.category = normalizeCategory(input.category);
+  }
+
   if (!partial || input.image !== undefined) {
     data.image = String(input.image || '').trim();
   }
@@ -60,10 +76,12 @@ function serializeMenuItem(item) {
 
 function listMenuItems({ includeUnavailable = false } = {}) {
   const sql = `
-    SELECT id, name, price, image, available
+    SELECT id, name, category, price, image, available
     FROM menu_items
     ${includeUnavailable ? '' : 'WHERE available = 1'}
-    ORDER BY id ASC
+    ORDER BY
+      CASE category WHEN 'food' THEN 1 WHEN 'drink' THEN 2 ELSE 3 END,
+      id ASC
   `;
 
   return db.prepare(sql).all().map(serializeMenuItem);
@@ -71,7 +89,7 @@ function listMenuItems({ includeUnavailable = false } = {}) {
 
 function getMenuItem(id) {
   const item = db.prepare(`
-    SELECT id, name, price, image, available
+    SELECT id, name, category, price, image, available
     FROM menu_items
     WHERE id = ?
   `).get(id);
@@ -87,8 +105,8 @@ function createMenuItem(input) {
   const data = normalizeMenuInput(input);
 
   const result = db.prepare(`
-    INSERT INTO menu_items (name, price, image, available)
-    VALUES (@name, @price, @image, @available)
+    INSERT INTO menu_items (name, category, price, image, available, updated_at)
+    VALUES (@name, @category, @price, @image, @available, datetime('now'))
   `).run(data);
 
   return getMenuItem(result.lastInsertRowid);
@@ -108,7 +126,8 @@ function updateMenuItem(id, input) {
 
   db.prepare(`
     UPDATE menu_items
-    SET ${assignments}
+    SET ${assignments},
+        updated_at = datetime('now')
     WHERE id = @id
   `).run({ ...data, id });
 

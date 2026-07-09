@@ -3,31 +3,29 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>TableFlow - Admin</title>
-    <link rel="stylesheet" href="/css/styles.css">
+    <title>Pho Viet - Admin</title>
+    <link rel="stylesheet" href="/css/styles.css?v=15">
   </head>
   <body>
     <header class="app-header">
-      <a class="brand" href="/">
-        <span class="brand-mark">TF</span>
+      <div class="brand">
+        <span class="brand-mark" data-restaurant-mark>PV</span>
         <span>
-          <strong>Admin</strong>
+          <strong data-restaurant-name>Pho Viet</strong>
           <small>Menu, bàn và QR</small>
         </span>
-      </a>
-      <nav class="header-actions" aria-label="Điều hướng">
-        <a href="/">Gọi món</a>
-        <a href="/kitchen">Bếp</a>
-      </nav>
+      </div>
     </header>
 
     <main class="page-shell admin-page">
-      <div class="admin-tabs" role="tablist" aria-label="Admin">
-        <button class="tab-button is-active" type="button" data-tab="menuTab">Menu</button>
+      <div class="admin-tabs" id="adminTabs" role="tablist" aria-label="Admin">
+        <button class="tab-button is-active" type="button" data-tab="liveTablesTab">Quản lý bàn</button>
+        <button class="tab-button" type="button" data-tab="menuTab">Menu</button>
         <button class="tab-button" type="button" data-tab="tablesTab">Bàn & QR</button>
+        <button class="tab-button" type="button" data-tab="restaurantTab">Thông tin quán</button>
       </div>
 
-      <section class="admin-tab-panel is-active" id="menuTab" aria-labelledby="menuAdminTitle">
+      <section class="admin-tab-panel" id="menuTab" aria-labelledby="menuAdminTitle">
         <div class="admin-shell">
           <section class="editor-panel" aria-labelledby="formTitle">
             <div class="section-bar compact">
@@ -44,12 +42,21 @@
                 <input id="itemName" name="name" type="text" maxlength="80" required>
               </label>
               <label>
+                Loại món
+                <select id="itemCategory" name="category" required>
+                  <option value="">Chọn loại</option>
+                  <option value="food">Đồ ăn</option>
+                  <option value="drink">Nước uống</option>
+                </select>
+              </label>
+              <label>
                 Giá
                 <input id="itemPrice" name="price" type="number" min="0" step="1000" required>
               </label>
+              <input id="itemImage" name="image" type="hidden">
               <label>
-                Ảnh
-                <input id="itemImage" name="image" type="url" placeholder="https://...">
+                Ảnh món ăn
+                <input id="itemImageFile" name="imageFile" type="file" accept="image/*">
               </label>
               <label class="checkbox-row">
                 <input id="itemAvailable" name="available" type="checkbox" checked>
@@ -69,13 +76,13 @@
                 <h2 id="menuAdminTitle">Menu</h2>
                 <p id="adminCount">0 món</p>
               </div>
-              <button class="ghost-button" id="reloadAdminMenu" type="button">Tải lại</button>
             </div>
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
                     <th>Món</th>
+                    <th>Loại</th>
                     <th>Giá</th>
                     <th>Trạng thái</th>
                     <th></th>
@@ -137,17 +144,17 @@
                 <p id="tableCount">0 bàn</p>
               </div>
               <div class="toolbar-actions">
-                <button class="ghost-button" id="reloadTables" type="button">Tải lại</button>
                 <button class="primary-button compact-button" id="printAllQr" type="button">Print All Stickers</button>
               </div>
             </div>
+            <div class="wifi-qr-panel" id="wifiQrPanel"></div>
             <div class="table-wrap">
               <table class="tables-admin-table">
                 <thead>
                   <tr>
                     <th>Bàn</th>
                     <th>Token</th>
-                    <th>Wi-Fi & Order</th>
+                    <th>QR Order</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -158,10 +165,107 @@
         </div>
       </section>
 
+      <section class="admin-tab-panel is-active" id="liveTablesTab" aria-labelledby="liveTablesTitle">
+        <div class="live-table-layout">
+          <section class="table-panel" aria-labelledby="liveTablesTitle">
+            <div class="section-bar">
+              <div>
+                <h2 id="liveTablesTitle">Quản lý bàn</h2>
+                <p id="liveTableCount">0 bàn</p>
+              </div>
+            </div>
+            <div class="table-status-grid" id="liveTablesGrid"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="table-detail-screen" id="tableDetailScreen" aria-labelledby="billTitle" hidden>
+        <div class="table-detail-layout">
+          <section class="table-panel bill-panel" aria-labelledby="billTitle">
+            <div class="section-bar">
+              <div class="bill-title-block">
+                <h2>
+                  <button class="icon-button" id="backToTablesButton" type="button" aria-label="Quay lại quản lý bàn">‹</button>
+                  <span id="billTitle">Chọn bàn</span>
+                </h2>
+                <p id="billMeta">Xem các món đã gọi trong bill hiện tại</p>
+              </div>
+            </div>
+            <div class="bill-content">
+              <div class="bill-orders" id="billOrders">
+                <p class="empty-state">Chọn một bàn để xem bill.</p>
+              </div>
+              <div class="bill-summary">
+                <div class="bill-print-info" id="billPrintInfo"></div>
+                <h3>Tổng món</h3>
+                <div id="billSummary">
+                  <p class="empty-state">Chưa có món.</p>
+                </div>
+                <div class="bill-total-row">
+                  <span>Tổng tiền</span>
+                  <strong id="billGrandTotal">0 ₫</strong>
+                </div>
+                <button class="danger-button bill-pay-button" id="closeSessionButton" type="button" disabled>Thanh toán</button>
+                <p class="message" id="billMessage" aria-live="polite"></p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="admin-tab-panel" id="restaurantTab" aria-labelledby="restaurantInfoTitle">
+        <div class="admin-shell">
+          <section class="editor-panel" aria-labelledby="restaurantInfoTitle">
+            <div class="section-bar compact">
+              <div>
+                <h1 id="restaurantInfoTitle">Thông tin quán</h1>
+                <p>Dùng cho giao diện và bill</p>
+              </div>
+            </div>
+
+            <form id="restaurantForm" class="menu-form">
+              <label>
+                Tên quán
+                <input id="restaurantName" name="name" type="text" maxlength="80" required>
+              </label>
+              <label>
+                Địa chỉ quán
+                <input id="restaurantAddress" name="address" type="text" maxlength="200">
+              </label>
+              <label>
+                Số điện thoại quán
+                <input id="restaurantPhone" name="phone" type="text" maxlength="30">
+              </label>
+              <label>
+                Nhân viên thu ngân
+                <input id="restaurantCashier" name="cashier_name" type="text" maxlength="80">
+              </label>
+              <button class="primary-button" type="submit">Lưu thông tin</button>
+              <p class="message" id="restaurantMessage" aria-live="polite"></p>
+            </form>
+          </section>
+
+          <section class="table-panel" aria-labelledby="restaurantPreviewTitle">
+            <div class="section-bar">
+              <div>
+                <h2 id="restaurantPreviewTitle">Thông tin in bill</h2>
+                <p>Xem trước dữ liệu sẽ đưa vào bill</p>
+              </div>
+            </div>
+            <div class="restaurant-preview">
+              <strong id="restaurantPreviewName">Pho Viet</strong>
+              <span id="restaurantPreviewAddress">Chưa có địa chỉ</span>
+              <span id="restaurantPreviewPhone">Chưa có số điện thoại</span>
+              <span id="restaurantPreviewCashier">Thu ngân: chưa nhập</span>
+            </div>
+          </section>
+        </div>
+      </section>
+
       <section class="print-area" id="printArea" aria-hidden="true"></section>
     </main>
 
-    <script src="/js/api.js"></script>
-    <script src="/js/admin.js"></script>
+    <script src="/js/api.js?v=5"></script>
+    <script src="/js/admin.js?v=15"></script>
   </body>
 </html>

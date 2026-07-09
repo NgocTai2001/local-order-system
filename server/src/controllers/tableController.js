@@ -1,4 +1,6 @@
 const tableService = require('../services/tableService');
+const sessionService = require('../services/sessionService');
+const { emitOrderStatusChanged } = require('../socket');
 const { getBaseUrl } = require('../utils/url');
 
 function listTables(req, res) {
@@ -33,6 +35,32 @@ function regenerateTableToken(req, res) {
   res.json(tableService.regenerateTableToken(id, getBaseUrl(req)));
 }
 
+function getCurrentSession(req, res) {
+  const id = tableService.normalizeId(req.params.id);
+  res.json(sessionService.getCurrentSession(id));
+}
+
+function getCurrentBill(req, res) {
+  const id = tableService.normalizeId(req.params.id);
+  res.json(sessionService.getCurrentBill(id));
+}
+
+function closeCurrentSession(req, res) {
+  const id = tableService.normalizeId(req.params.id);
+  const bill = sessionService.closeCurrentSession(id);
+
+  for (const order of bill.orders || []) {
+    emitOrderStatusChanged({
+      ...order,
+      status: 'paid',
+      table_id: bill.table_id,
+      table_name: bill.table
+    });
+  }
+
+  res.json(bill);
+}
+
 async function getTableQr(req, res) {
   const id = tableService.normalizeId(req.params.id);
   res.json(await tableService.getTableQr(id, getBaseUrl(req)));
@@ -45,8 +73,11 @@ async function getAllTableQr(req, res) {
 module.exports = {
   createTable,
   createTablesBulk,
+  closeCurrentSession,
   deleteTable,
   getAllTableQr,
+  getCurrentBill,
+  getCurrentSession,
   getTableByToken,
   getTableQr,
   listTables,

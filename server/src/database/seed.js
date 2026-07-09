@@ -2,13 +2,13 @@ const { db } = require('./connection');
 const { generateToken } = require('../utils/token');
 
 const seedItems = [
-  { name: 'Bún bò', price: 45000 },
-  { name: 'Phở bò', price: 50000 },
-  { name: 'Cơm tấm', price: 40000 },
-  { name: 'Bánh mì', price: 25000 },
-  { name: 'Trà đào', price: 30000 },
-  { name: 'Coca', price: 15000 },
-  { name: 'Pepsi', price: 15000 }
+  { name: 'Bún bò', category: 'food', price: 45000 },
+  { name: 'Phở bò', category: 'food', price: 50000 },
+  { name: 'Cơm tấm', category: 'food', price: 40000 },
+  { name: 'Bánh mì', category: 'food', price: 25000 },
+  { name: 'Trà đào', category: 'drink', price: 30000 },
+  { name: 'Coca', category: 'drink', price: 15000 },
+  { name: 'Pepsi', category: 'drink', price: 15000 }
 ];
 
 function createUniqueTableToken() {
@@ -32,8 +32,8 @@ function seedMenuItems() {
   }
 
   const insert = db.prepare(`
-    INSERT INTO menu_items (name, price, image, available)
-    VALUES (@name, @price, @image, 1)
+    INSERT INTO menu_items (name, category, price, image, available)
+    VALUES (@name, @category, @price, @image, 1)
   `);
 
   const insertMany = db.transaction((items) => {

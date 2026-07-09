@@ -1,4 +1,4 @@
-# TableFlow - Local Order System MVP (Pi3B)
+# Pho Viet - Local Order System MVP (Pi3B)
 
 Hệ thống order món ăn chạy local bằng Docker, tối ưu cho mô hình nhỏ như quán ăn dùng Raspberry Pi 3B. Khách quét QR ở bàn, web tự nhận diện bàn và gửi đơn realtime cho bếp.
 
@@ -64,18 +64,21 @@ Vào Admin, tab `Bàn & QR`, copy link hoặc in QR của `Bàn 01` để lấy 
 ## Database
 
 SQLite tự tạo khi API khởi động lần đầu tại `data/sqlite/tableflow.db`.
+Ảnh món upload từ Admin được lưu tại `data/uploads/menu/` và được serve qua `/uploads/menu/...`.
 
 Các bảng chính:
 
 - `tables`: tên bàn, token QR riêng, trạng thái bàn.
-- `menu_items`: món, giá, ảnh URL, trạng thái đang bán.
-- `orders`: đơn hàng theo `table_id`.
+- `table_sessions`: bill/phiên bàn hiện tại, trạng thái `open` hoặc `closed`.
+- `restaurant_info`: tên quán, địa chỉ, số điện thoại, nhân viên thu ngân dùng cho giao diện và bill.
+- `menu_items`: món, loại `food`/`drink`, giá, ảnh URL, trạng thái đang bán.
+- `orders`: đơn hàng theo `table_id`, thuộc một `table_session` khi bàn đang mở bill.
 - `order_items`: món trong đơn, lưu snapshot tên/giá tại thời điểm đặt.
 
 Seed lần đầu:
 
 - 10 bàn: `Bàn 01` đến `Bàn 10`, mỗi bàn có token random riêng.
-- 7 món mẫu: Bún bò, Phở bò, Cơm tấm, Bánh mì, Trà đào, Coca, Pepsi.
+- 7 món mẫu: Bún bò, Phở bò, Cơm tấm, Bánh mì thuộc `food`; Trà đào, Coca, Pepsi thuộc `drink`.
 
 ## QR bàn
 
@@ -135,6 +138,10 @@ PUT    /api/menu/:id
 PATCH  /api/menu/:id
 DELETE /api/menu/:id
 
+GET    /api/restaurant
+GET    /api/admin/restaurant
+PATCH  /api/admin/restaurant
+
 GET    /api/tables
 GET    /api/tables/token/:token
 POST   /api/tables
@@ -142,6 +149,9 @@ POST   /api/tables/bulk
 PUT    /api/tables/:id
 DELETE /api/tables/:id
 POST   /api/tables/:id/regenerate-token
+GET    /api/tables/:id/current-session
+GET    /api/tables/:id/current-bill
+PATCH  /api/tables/:id/close-session
 GET    /api/tables/:id/qr
 GET    /api/tables/qr/all
 
@@ -149,6 +159,33 @@ POST   /api/orders
 GET    /api/orders
 GET    /api/orders?status=pending
 PATCH  /api/orders/:id/status
+```
+
+Khi khách gọi món, API tự tìm `table_session` đang mở của bàn. Nếu chưa có, API tạo session mới, gắn order vào session đó và chuyển bàn sang `occupied`. Khách gọi thêm lần 2, lần 3 thì các order mới vẫn thuộc cùng session để Admin xem được tổng bill của bàn.
+
+Ví dụ cập nhật thông tin quán:
+
+```bash
+curl -X PATCH http://localhost:8080/api/admin/restaurant \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Pho Viet",
+    "address": "123 Duong A",
+    "phone": "0900000000",
+    "cashier_name": "Tai"
+  }'
+```
+
+Ví dụ xem bill hiện tại:
+
+```bash
+curl http://localhost:8080/api/tables/1/current-bill
+```
+
+Đóng bàn/thanh toán:
+
+```bash
+curl -X PATCH http://localhost:8080/api/tables/1/close-session
 ```
 
 Ví dụ tạo order:

@@ -6,6 +6,20 @@
   const activeStatuses = new Set(['pending', 'cooking', 'ready']);
   let orders = [];
 
+  async function loadRestaurantInfo() {
+    try {
+      const info = await api.getRestaurantInfo();
+      api.applyRestaurantInfo(info, 'Bếp');
+    } catch (error) {
+      // Bếp vẫn nhận đơn bình thường nếu cấu hình quán chưa tải được.
+    }
+  }
+
+  function setConnectionMessage(text) {
+    connectionStatus.textContent = text || '';
+    connectionStatus.hidden = !text;
+  }
+
   function formatTime(value) {
     const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
     const date = new Date(normalized);
@@ -38,8 +52,18 @@
     if (index >= 0) {
       orders[index] = order;
     } else {
-      orders = [order, ...orders];
+      orders = [...orders, order];
     }
+
+    sortOrders();
+  }
+
+  function sortOrders() {
+    orders.sort((first, second) => {
+      const firstCreated = String(first.created_at || '');
+      const secondCreated = String(second.created_at || '');
+      return firstCreated.localeCompare(secondCreated) || first.id - second.id;
+    });
   }
 
   function applyStatusChange(payload) {
@@ -58,7 +82,10 @@
 
   function createStatusButton(order, status, label, danger) {
     const button = document.createElement('button');
-    button.className = danger ? 'danger-button' : 'ghost-button';
+    button.className = `${danger ? 'danger-button' : 'ghost-button'} status-step-button`;
+    if (order.status === status) {
+      button.classList.add('is-active');
+    }
     button.type = 'button';
     button.textContent = label;
     button.disabled = order.status === status;
@@ -119,8 +146,9 @@
   async function loadOrders() {
     ordersList.innerHTML = '<p class="empty-state">Đang tải đơn...</p>';
     try {
-      const allOrders = await api.getOrders();
-      orders = allOrders.filter((order) => activeStatuses.has(order.status));
+      const kitchenOrders = api.getKitchenOrders ? await api.getKitchenOrders() : await api.getOrders();
+      orders = kitchenOrders.filter((order) => activeStatuses.has(order.status));
+      sortOrders();
       renderOrders();
     } catch (error) {
       ordersList.innerHTML = '';
@@ -133,25 +161,42 @@
 
   async function updateStatus(id, status, button) {
     const originalText = button.textContent;
+    const currentOrder = orders.find((order) => order.id === id);
+    const previousOrder = currentOrder
+      ? { ...currentOrder, items: currentOrder.items.map((item) => ({ ...item })) }
+      : null;
+
     button.disabled = true;
     button.textContent = 'Đang lưu...';
+
+    if (currentOrder) {
+      currentOrder.status = status;
+      upsertOrder(currentOrder);
+      renderOrders();
+    }
 
     try {
       const order = await api.updateOrder(id, status);
       upsertOrder(order);
       renderOrders();
     } catch (error) {
-      button.disabled = false;
-      button.textContent = error.message || originalText;
+      if (previousOrder) {
+        upsertOrder(previousOrder);
+        renderOrders();
+      } else {
+        button.disabled = false;
+        button.textContent = error.message || originalText;
+      }
+      setConnectionMessage(error.message || 'Không cập nhật được trạng thái.');
     }
   }
 
   const socket = io();
   socket.on('connect', () => {
-    connectionStatus.textContent = 'Realtime đã bật';
+    setConnectionMessage('');
   });
   socket.on('disconnect', () => {
-    connectionStatus.textContent = 'Mất kết nối realtime';
+    setConnectionMessage('Mất kết nối realtime');
   });
   socket.on('order:new', (order) => {
     upsertOrder(order);
@@ -163,7 +208,6 @@
   });
   socket.on('order:status_changed', applyStatusChange);
 
-  document.getElementById('reloadOrders').addEventListener('click', loadOrders);
-
+  loadRestaurantInfo();
   loadOrders();
 })();

@@ -11,8 +11,10 @@ services:
       WIFI_SSID: ${WIFI_SSID:-TABLEFLOW_ORDER}
       WIFI_PASSWORD: ${WIFI_PASSWORD:-order1234}
       WIFI_SECURITY: ${WIFI_SECURITY:-WPA}
+      UPLOAD_DIR: /app/data/uploads
     volumes:
       - ./data/sqlite:/app/data/sqlite
+      - ./data/uploads:/app/data/uploads
     expose:
       - "3000"
     restart: unless-stopped

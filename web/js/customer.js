@@ -14,6 +14,24 @@
   const cart = new Map();
   let menu = [];
   let currentTable = null;
+  const categoryOrder = [
+    { key: 'food', label: 'Đồ ăn' },
+    { key: 'drink', label: 'Nước uống' }
+  ];
+
+  function setHeaderSubtitle(text) {
+    tableTokenLabel.textContent = text || '';
+    tableTokenLabel.hidden = !text;
+  }
+
+  async function loadRestaurantInfo() {
+    try {
+      const info = await api.getRestaurantInfo();
+      api.applyRestaurantInfo(info, 'Gọi món');
+    } catch (error) {
+      // Menu vẫn phải dùng được nếu cấu hình quán tạm thời không tải được.
+    }
+  }
 
   function getTableTokenFromUrl() {
     const match = window.location.pathname.match(/^\/t\/([^/]+)$/);
@@ -118,24 +136,49 @@
       return;
     }
 
-    for (const item of menu) {
-      const card = document.createElement('article');
-      card.className = 'menu-card';
+    for (const category of categoryOrder) {
+      const items = menu.filter((item) => item.category === category.key);
 
-      const content = document.createElement('div');
-      content.className = 'menu-content';
+      if (items.length === 0) {
+        continue;
+      }
 
-      const title = document.createElement('h3');
-      title.textContent = item.name;
+      const section = document.createElement('section');
+      section.className = 'menu-category';
 
-      const price = document.createElement('div');
-      price.className = 'price';
-      price.textContent = api.formatCurrency(item.price);
+      const heading = document.createElement('h2');
+      heading.className = 'menu-category-title';
+      heading.textContent = category.label;
 
-      content.append(title, price, createQuantityControls(item));
-      card.append(createFoodVisual(item), content);
-      menuList.append(card);
+      const grid = document.createElement('div');
+      grid.className = 'menu-category-grid';
+
+      for (const item of items) {
+        grid.append(createMenuCard(item));
+      }
+
+      section.append(heading, grid);
+      menuList.append(section);
     }
+  }
+
+  function createMenuCard(item) {
+    const card = document.createElement('article');
+    card.className = 'menu-card';
+
+    const content = document.createElement('div');
+    content.className = 'menu-content';
+
+    const title = document.createElement('h3');
+    title.textContent = item.name;
+
+    const price = document.createElement('div');
+    price.className = 'price';
+    price.textContent = api.formatCurrency(item.price);
+
+    content.append(title, price);
+    card.append(createFoodVisual(item), content, createQuantityControls(item));
+    return card;
   }
 
   function renderCart() {
@@ -147,7 +190,7 @@
 
     cartCount.textContent = totalQuantity ? `${totalQuantity} món` : 'Chưa có món';
     cartTotal.textContent = api.formatCurrency(totalPrice);
-    submitOrder.disabled = entries.length === 0 || !currentTable;
+    submitOrder.disabled = entries.length === 0;
 
     if (entries.length === 0) {
       const empty = document.createElement('p');
@@ -179,16 +222,6 @@
   }
 
   async function loadMenu() {
-    if (!currentTable) {
-      menuList.innerHTML = '';
-      const empty = document.createElement('p');
-      empty.className = 'empty-state';
-      empty.textContent = 'Vui lòng quét QR trên bàn để gọi món.';
-      menuList.append(empty);
-      renderCart();
-      return;
-    }
-
     menuList.innerHTML = '<p class="empty-state">Đang tải menu...</p>';
     try {
       menu = await api.getMenu(false);
@@ -234,33 +267,33 @@
     }
   }
 
-  document.getElementById('reloadMenu').addEventListener('click', loadMenu);
   submitOrder.addEventListener('click', placeOrder);
 
   async function initTable() {
     if (!tableToken) {
-      tableTokenLabel.textContent = 'Quét QR trên bàn';
-      tableNotice.textContent = 'Vui lòng quét QR trên bàn để gọi món.';
+      setHeaderSubtitle('');
+      tableNotice.textContent = 'Quét QR trên bàn khi đặt món.';
       await loadMenu();
       return;
     }
 
-    tableTokenLabel.textContent = 'Đang kiểm tra bàn...';
+    setHeaderSubtitle('Đang kiểm tra bàn...');
     tableNotice.textContent = 'Đang nhận diện bàn từ QR.';
 
     try {
       currentTable = await api.getTableByToken(tableToken);
-      tableTokenLabel.textContent = currentTable.name;
+      setHeaderSubtitle(currentTable.name);
       tableNotice.textContent = `Bạn đang gọi món tại: ${currentTable.name}`;
       await loadMenu();
     } catch (error) {
       currentTable = null;
-      tableTokenLabel.textContent = 'QR không hợp lệ';
+      setHeaderSubtitle('QR không hợp lệ');
       tableNotice.textContent = error.message;
       setMessage(error.message, true);
       await loadMenu();
     }
   }
 
+  loadRestaurantInfo();
   initTable();
 })();

@@ -4,5 +4,10 @@ server/node_modules/
 *.log
 data/*.db
 data/*.db-*
+data/uploads/*
+!data/uploads/.gitkeep
+!data/uploads/menu/
+data/uploads/menu/*
+!data/uploads/menu/.gitkeep
 data/**/*.db
 data/**/*.db-*
