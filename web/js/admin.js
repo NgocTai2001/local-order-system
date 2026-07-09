@@ -1138,11 +1138,22 @@
     tableDetailScreen.hidden = true;
     adminTabs.hidden = false;
 
+    let activeTab = null;
     document.querySelectorAll('.tab-button').forEach((button) => {
-      button.classList.toggle('is-active', button.dataset.tab === tabId);
+      const isActive = button.dataset.tab === tabId;
+      button.classList.toggle('is-active', isActive);
+      if (isActive) {
+        activeTab = button;
+      }
     });
     document.querySelectorAll('.admin-tab-panel').forEach((panel) => {
       panel.classList.toggle('is-active', panel.id === tabId);
+    });
+
+    activeTab?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center'
     });
 
     if (tabId === 'tablesTab') {

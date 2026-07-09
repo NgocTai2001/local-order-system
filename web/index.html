@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pho Viet - Gọi món</title>
-    <link rel="stylesheet" href="/css/styles.css?v=6">
+    <link rel="stylesheet" href="/css/styles.css?v=24">
   </head>
   <body>
     <header class="app-header">
@@ -42,12 +42,18 @@
             <strong id="cartTotal">0 đ</strong>
           </div>
           <button class="primary-button" id="submitOrder" type="button" disabled>Đặt món</button>
-          <p class="message" id="orderMessage" aria-live="polite"></p>
+          <p class="message" id="orderMessage" aria-live="polite" hidden></p>
+          <div class="ordered-review" id="orderedReview" hidden>
+            <button class="review-order-button" id="reviewOrdersButton" type="button">
+              Xem lại món đã đặt
+            </button>
+            <div class="ordered-list" id="orderedList" aria-live="polite" hidden></div>
+          </div>
         </div>
       </aside>
     </main>
 
     <script src="/js/api.js?v=5"></script>
-    <script src="/js/customer.js?v=6"></script>
+    <script src="/js/customer.js?v=11"></script>
   </body>
 </html>

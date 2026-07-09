@@ -17,6 +17,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -366,6 +370,154 @@ a {
   font-weight: 700;
 }
 
+.ordered-review {
+  display: grid;
+  gap: 8px;
+}
+
+.review-order-button {
+  width: fit-content;
+  min-height: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--brand-dark);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ordered-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ordered-order-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.ordered-order-card.has-delete {
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: center;
+}
+
+.ordered-order-content {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.ordered-order-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.ordered-order-head span {
+  justify-self: end;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ordered-delete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  justify-self: end;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  padding: 0;
+  border: 1px solid #ffd1c2;
+  border-radius: 8px;
+  background: #fff2ed;
+  color: #a9371d;
+}
+
+.ordered-delete-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ordered-items {
+  display: grid;
+  gap: 8px;
+}
+
+.ordered-item-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.ordered-item-row b {
+  color: var(--accent);
+}
+
+.ordered-item-info {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.ordered-item-info span {
+  overflow-wrap: anywhere;
+}
+
+.ordered-item-info small {
+  color: var(--muted);
+}
+
+.ordered-status {
+  justify-self: end;
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: var(--surface-soft);
+  color: var(--brand-dark);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ordered-status-cooking {
+  background: #fff6d8;
+  color: var(--warning);
+}
+
+.ordered-status-ready,
+.ordered-status-served,
+.ordered-status-paid {
+  background: #e7f3ed;
+  color: var(--brand-dark);
+}
+
+.ordered-status-cancelled {
+  background: #fff2ed;
+  color: #a9371d;
+}
+
+.compact-empty {
+  padding: 12px;
+  font-size: 14px;
+}
+
 .orders-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -465,13 +617,26 @@ a {
 
 .admin-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
+  max-width: 100%;
   margin-bottom: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
   border-bottom: 1px solid var(--line);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.admin-tabs::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .tab-button {
+  flex: 0 0 auto;
   min-height: 44px;
   border: 0;
   border-bottom: 3px solid transparent;
@@ -479,6 +644,7 @@ a {
   background: transparent;
   color: var(--muted);
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .tab-button.is-active {
@@ -1132,6 +1298,23 @@ th {
     width: 100%;
     align-items: stretch;
     justify-content: flex-start;
+  }
+
+  .ordered-order-head {
+    gap: 8px;
+  }
+
+  .ordered-order-head span {
+    white-space: normal;
+  }
+
+  .ordered-item-row {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  .ordered-status {
+    grid-column: 2;
+    justify-self: start;
   }
 }
 
