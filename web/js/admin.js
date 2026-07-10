@@ -4,16 +4,50 @@
   const form = document.getElementById('menuForm');
   const itemId = document.getElementById('itemId');
   const itemName = document.getElementById('itemName');
+  const itemNameCount = document.getElementById('itemNameCount');
   const itemCategory = document.getElementById('itemCategory');
+  const itemDescription = document.getElementById('itemDescription');
+  const itemDescriptionCount = document.getElementById('itemDescriptionCount');
   const itemPrice = document.getElementById('itemPrice');
   const itemImage = document.getElementById('itemImage');
   const itemImageFile = document.getElementById('itemImageFile');
+  const itemImageFileText = document.getElementById('itemImageFileText');
   const itemAvailable = document.getElementById('itemAvailable');
+  const itemAvailableToggle = document.getElementById('itemAvailableToggle');
+  const itemAvailableLabel = document.getElementById('itemAvailableLabel');
+  const itemDisplaySelect = document.getElementById('itemDisplaySelect');
+  const itemDisplayToggle = document.getElementById('itemDisplayToggle');
+  const itemDisplayMenu = document.getElementById('itemDisplayMenu');
+  const itemDisplaySummary = document.getElementById('itemDisplaySummary');
+  const itemFeatured = document.getElementById('itemFeatured');
+  const itemTodayOffer = document.getElementById('itemTodayOffer');
+  const itemForYou = document.getElementById('itemForYou');
+  const itemSortOrder = document.getElementById('itemSortOrder');
   const adminMenuBody = document.getElementById('adminMenuBody');
   const adminCount = document.getElementById('adminCount');
   const adminMessage = document.getElementById('adminMessage');
   const formTitle = document.getElementById('formTitle');
   const formMode = document.getElementById('formMode');
+  const categoryForm = document.getElementById('categoryForm');
+  const categoryId = document.getElementById('categoryId');
+  const categoryName = document.getElementById('categoryName');
+  const categoryIcon = document.getElementById('categoryIcon');
+  const categoryColor = document.getElementById('categoryColor');
+  const categorySortOrder = document.getElementById('categorySortOrder');
+  const categoryVisible = document.getElementById('categoryVisible');
+  const categoryBody = document.getElementById('categoryBody');
+  const categoryCount = document.getElementById('categoryCount');
+  const categoryMessage = document.getElementById('categoryMessage');
+  const orderCategoryList = document.getElementById('orderCategoryList');
+  const newCategoryButton = document.getElementById('newCategoryButton');
+  const newMenuItemButton = document.getElementById('newMenuItemButton');
+  const menuItemModal = document.getElementById('menuItemModal');
+  const categoryModal = document.getElementById('categoryModal');
+  const adminModalBackdrop = document.getElementById('adminModalBackdrop');
+  const closeMenuItemModal = document.getElementById('closeMenuItemModal');
+  const closeCategoryModal = document.getElementById('closeCategoryModal');
+  const categoryFormTitle = document.getElementById('categoryFormTitle');
+  const categoryFormMode = document.getElementById('categoryFormMode');
 
   const tableForm = document.getElementById('tableForm');
   const tableId = document.getElementById('tableId');
@@ -54,6 +88,7 @@
   const restaurantPreviewCashier = document.getElementById('restaurantPreviewCashier');
 
   let menu = [];
+  let menuCategories = [];
   let tables = [];
   let restaurantInfo = {
     name: 'Pho Viet',
@@ -64,10 +99,12 @@
   let selectedLiveTableId = null;
   let lastClosedBill = null;
   const qrByTableId = new Map();
-  const categoryLabels = {
+  const fallbackCategoryLabels = {
     food: 'Đồ ăn',
     drink: 'Nước uống'
   };
+  const TODAY_OFFER_KEY = 'today-offer';
+  const FOR_YOU_KEY = 'for-you';
   const tableStatusLabels = {
     empty: 'Trống',
     occupied: 'Đang ăn',
@@ -88,6 +125,11 @@
     adminMessage.style.color = isError ? '#a9371d' : '';
   }
 
+  function setCategoryMessage(text, isError) {
+    categoryMessage.textContent = text || '';
+    categoryMessage.style.color = isError ? '#a9371d' : '';
+  }
+
   function setTableMessage(text, isError) {
     tableMessage.textContent = text || '';
     tableMessage.style.color = isError ? '#a9371d' : '';
@@ -101,6 +143,32 @@
   function setRestaurantMessage(text, isError) {
     restaurantMessage.textContent = text || '';
     restaurantMessage.style.color = isError ? '#a9371d' : '';
+  }
+
+  function openAdminModal(modal) {
+    adminModalBackdrop.hidden = false;
+    modal.hidden = false;
+    document.body.classList.add('sheet-open');
+  }
+
+  function closeAdminModals() {
+    menuItemModal.hidden = true;
+    categoryModal.hidden = true;
+    adminModalBackdrop.hidden = true;
+    closeDisplayOptionMenu();
+    document.body.classList.remove('sheet-open');
+  }
+
+  function openMenuItemModal() {
+    resetForm();
+    openAdminModal(menuItemModal);
+    itemName.focus();
+  }
+
+  function openCategoryModal() {
+    resetCategoryForm();
+    openAdminModal(categoryModal);
+    categoryName.focus();
   }
 
   function restaurantPayloadFromForm() {
@@ -141,6 +209,260 @@
     }
   }
 
+  function getCategory(categoryKey) {
+    return menuCategories.find((category) => category.key === categoryKey);
+  }
+
+  function categoryLabel(categoryKey) {
+    return getCategory(categoryKey)?.name || fallbackCategoryLabels[categoryKey] || 'Chưa phân loại';
+  }
+
+  function categoryItemCount(category) {
+    if (category.key === TODAY_OFFER_KEY) {
+      return menu.filter((item) => item.show_today_offer).length;
+    }
+
+    if (category.key === FOR_YOU_KEY) {
+      return menu.filter((item) => item.show_for_you).length;
+    }
+
+    return menu.filter((item) => item.category === category.key).length;
+  }
+
+  function renderCategoryOptions() {
+    const currentValue = itemCategory.value;
+    itemCategory.innerHTML = '<option value="">Chọn loại / mục</option>';
+
+    for (const category of menuCategories) {
+      if (category.is_system) {
+        continue;
+      }
+
+      if (!category.visible && category.key !== currentValue) {
+        continue;
+      }
+
+      const option = document.createElement('option');
+      option.value = category.key;
+      option.textContent = `${category.icon ? `${category.icon} ` : ''}${category.name}`;
+      itemCategory.append(option);
+    }
+
+    itemCategory.value = currentValue;
+  }
+
+  function resetCategoryForm() {
+    categoryForm.reset();
+    categoryId.value = '';
+    categoryColor.value = '#24745c';
+    categorySortOrder.value = menuCategories.filter((category) => !category.is_system).length + 1;
+    categoryVisible.checked = true;
+    categoryFormTitle.textContent = 'Thêm loại mới';
+    categoryFormMode.textContent = 'Tạo danh mục để hiển thị trên trang order';
+    setCategoryMessage('');
+  }
+
+  function fillCategoryForm(category) {
+    categoryId.value = category.id;
+    categoryName.value = category.name;
+    categoryIcon.value = category.icon || '';
+    categoryColor.value = category.color || '#24745c';
+    categorySortOrder.value = category.sort_order || 0;
+    categoryVisible.checked = category.visible;
+    categoryFormTitle.textContent = 'Sửa danh mục';
+    categoryFormMode.textContent = category.is_system ? 'Mục cố định' : `#${category.id}`;
+    setCategoryMessage('');
+    openAdminModal(categoryModal);
+    categoryName.focus();
+  }
+
+  function categoryPayloadFromForm() {
+    return {
+      name: categoryName.value.trim(),
+      icon: categoryIcon.value.trim(),
+      color: categoryColor.value,
+      visible: categoryVisible.checked,
+      sort_order: Number(categorySortOrder.value || 0)
+    };
+  }
+
+  function iconSvg(paths) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+
+    for (const value of paths) {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', value);
+      svg.append(path);
+    }
+
+    return svg;
+  }
+
+  function renderCategoryList() {
+    categoryBody.replaceChildren();
+    orderCategoryList?.replaceChildren();
+    categoryCount.textContent = `${menuCategories.length} loại danh mục`;
+    renderCategoryOptions();
+
+    if (menuCategories.length === 0) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 4;
+      cell.textContent = 'Chưa có loại món.';
+      row.append(cell);
+      categoryBody.append(row);
+      return;
+    }
+
+    menuCategories.forEach((category, index) => {
+      const itemCount = categoryItemCount(category);
+      const row = document.createElement('tr');
+
+      const order = document.createElement('td');
+      order.textContent = index + 1;
+
+      const name = document.createElement('td');
+      const nameWrap = document.createElement('div');
+      nameWrap.className = 'category-name-cell';
+      const nameIcon = document.createElement('span');
+      nameIcon.className = 'category-icon-tile';
+      nameIcon.textContent = category.icon || '•';
+      const nameText = document.createElement('span');
+      const categoryTitle = document.createElement('strong');
+      categoryTitle.textContent = category.name;
+      nameText.append(categoryTitle);
+      if (category.is_system) {
+        const type = document.createElement('small');
+        type.className = 'muted-line';
+        type.textContent = 'Mục cố định';
+        nameText.append(type);
+      }
+      nameWrap.append(nameIcon, nameText);
+      name.append(nameWrap);
+
+      const status = document.createElement('td');
+      const pill = document.createElement('span');
+      pill.className = `status-pill${category.visible ? '' : ' off'}`;
+      pill.textContent = category.visible ? '✓ Hiển thị' : 'Đang ẩn';
+      status.append(pill);
+
+      const actions = document.createElement('td');
+      const actionRow = document.createElement('div');
+      actionRow.className = 'row-actions category-actions';
+
+      const edit = document.createElement('button');
+      edit.className = 'icon-action-button';
+      edit.type = 'button';
+      edit.title = 'Sửa danh mục';
+      edit.setAttribute('aria-label', `Sửa ${category.name}`);
+      edit.append(iconSvg([
+        'M12 20h9',
+        'M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z'
+      ]));
+      edit.addEventListener('click', () => fillCategoryForm(category));
+
+      const remove = document.createElement('button');
+      remove.className = 'icon-action-button danger-icon-button';
+      remove.type = 'button';
+      remove.title = category.is_system ? 'Mục cố định không thể xoá' : 'Xoá danh mục';
+      remove.setAttribute('aria-label', category.is_system ? `${category.name} là mục cố định` : `Xoá ${category.name}`);
+      remove.append(iconSvg([
+        'M3 6h18',
+        'M8 6V4h8v2',
+        'M6 6l1 15h10l1-15',
+        'M10 11v6',
+        'M14 11v6'
+      ]));
+      remove.disabled = category.is_system;
+      if (!category.is_system) {
+        remove.addEventListener('click', () => deleteCategory(category));
+      }
+
+      actionRow.append(edit, remove);
+      actions.append(actionRow);
+      row.append(order, name, status, actions);
+      categoryBody.append(row);
+
+      if (!orderCategoryList) {
+        return;
+      }
+
+      const orderCard = document.createElement('div');
+      orderCard.className = 'order-category-card';
+      const orderNumber = document.createElement('strong');
+      orderNumber.textContent = index + 1;
+      const orderIcon = document.createElement('span');
+      orderIcon.className = 'order-category-icon';
+      orderIcon.textContent = category.icon || '•';
+      const orderName = document.createElement('span');
+      orderName.textContent = category.name;
+      const orderCount = document.createElement('em');
+      orderCount.textContent = category.is_system ? `${itemCount} món - cố định` : `${itemCount} món`;
+      orderCard.append(orderNumber, orderIcon, orderName, orderCount);
+      orderCategoryList.append(orderCard);
+    });
+  }
+
+  async function loadCategories() {
+    categoryBody.innerHTML = '<tr><td colspan="4">Đang tải loại món...</td></tr>';
+
+    try {
+      menuCategories = await api.getMenuCategories(true);
+      renderCategoryList();
+    } catch (error) {
+      categoryBody.innerHTML = '';
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 4;
+      cell.textContent = error.message;
+      row.append(cell);
+      categoryBody.append(row);
+    }
+  }
+
+  async function saveCategory(event) {
+    event.preventDefault();
+    setCategoryMessage('Đang lưu loại...');
+
+    try {
+      if (categoryId.value) {
+        await api.updateMenuCategory(categoryId.value, categoryPayloadFromForm());
+        setCategoryMessage('Đã cập nhật loại.');
+      } else {
+        await api.createMenuCategory(categoryPayloadFromForm());
+        setCategoryMessage('Đã thêm loại.');
+      }
+
+      resetCategoryForm();
+      await loadCategories();
+      await loadMenu();
+      closeAdminModals();
+    } catch (error) {
+      setCategoryMessage(error.message, true);
+    }
+  }
+
+  async function deleteCategory(category) {
+    const ok = window.confirm(`Xoá loại "${category.name}"?`);
+    if (!ok) {
+      return;
+    }
+
+    try {
+      await api.deleteMenuCategory(category.id);
+      setCategoryMessage('Đã xoá loại.');
+      if (categoryId.value === String(category.id)) {
+        resetCategoryForm();
+      }
+      await loadCategories();
+      await loadMenu();
+    } catch (error) {
+      setCategoryMessage(error.message, true);
+    }
+  }
+
   async function saveRestaurantInfo(event) {
     event.preventDefault();
     setRestaurantMessage('Đang lưu...');
@@ -154,14 +476,73 @@
     }
   }
 
+  function updateDisplayOptionSummary() {
+    const labels = [];
+
+    if (itemTodayOffer.checked) {
+      labels.push('Ưu đãi hôm nay');
+    }
+
+    if (itemForYou.checked) {
+      labels.push('Dành cho bạn');
+    }
+
+    if (itemFeatured.checked) {
+      labels.push('Nổi bật');
+    }
+
+    itemDisplaySummary.textContent = labels.length ? labels.join(', ') : 'Không áp dụng';
+    itemDisplayToggle.classList.toggle('has-value', labels.length > 0);
+  }
+
+  function closeDisplayOptionMenu() {
+    itemDisplayMenu.hidden = true;
+    itemDisplayToggle.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleDisplayOptionMenu() {
+    const shouldOpen = itemDisplayMenu.hidden;
+    itemDisplayMenu.hidden = !shouldOpen;
+    itemDisplayToggle.setAttribute('aria-expanded', String(shouldOpen));
+  }
+
+  function updateTextCounter(input, counter, maxLength) {
+    counter.textContent = `${input.value.length}/${maxLength}`;
+  }
+
+  function updateMenuCounters() {
+    updateTextCounter(itemName, itemNameCount, 100);
+    updateTextCounter(itemDescription, itemDescriptionCount, 300);
+  }
+
+  function updateMenuFileText() {
+    const file = itemImageFile.files[0];
+    itemImageFileText.innerHTML = file ? file.name : 'Kéo thả ảnh vào đây<br>hoặc bấm để chọn file';
+  }
+
+  function setItemAvailableState(isAvailable) {
+    itemAvailable.value = isAvailable ? '1' : '0';
+    itemAvailableToggle.classList.toggle('is-on', isAvailable);
+    itemAvailableToggle.setAttribute('aria-pressed', String(isAvailable));
+    itemAvailableLabel.textContent = isAvailable ? 'Đang bán' : 'Tạm ẩn';
+  }
+
   function resetForm() {
     form.reset();
     itemId.value = '';
     itemCategory.value = '';
     itemImageFile.value = '';
-    itemAvailable.checked = true;
-    formTitle.textContent = 'Thêm món';
-    formMode.textContent = 'Nhập thông tin món';
+    itemImage.value = '';
+    updateMenuFileText();
+    setItemAvailableState(true);
+    itemFeatured.checked = false;
+    itemTodayOffer.checked = false;
+    itemForYou.checked = false;
+    updateDisplayOptionSummary();
+    updateMenuCounters();
+    itemSortOrder.value = '0';
+    formTitle.textContent = 'Thêm món mới';
+    formMode.textContent = 'Tạo món để hiển thị trên trang order';
     setMessage('');
   }
 
@@ -169,12 +550,22 @@
     itemId.value = item.id;
     itemName.value = item.name;
     itemCategory.value = item.category || '';
+    itemDescription.value = item.description || '';
     itemPrice.value = item.price;
     itemImage.value = item.image || '';
-    itemAvailable.checked = item.available;
+    itemImageFile.value = '';
+    updateMenuFileText();
+    setItemAvailableState(Boolean(item.available));
+    itemFeatured.checked = item.featured;
+    itemTodayOffer.checked = item.show_today_offer;
+    itemForYou.checked = item.show_for_you;
+    updateDisplayOptionSummary();
+    updateMenuCounters();
+    itemSortOrder.value = item.sort_order || 0;
     formTitle.textContent = 'Sửa món';
     formMode.textContent = `#${item.id}`;
     setMessage('');
+    openAdminModal(menuItemModal);
     itemName.focus();
   }
 
@@ -182,9 +573,14 @@
     return {
       name: itemName.value.trim(),
       category: itemCategory.value,
+      description: itemDescription.value.trim(),
       price: Number(itemPrice.value),
       image: itemImage.value.trim(),
-      available: itemAvailable.checked
+      available: itemAvailable.value === '1',
+      featured: itemFeatured.checked,
+      show_today_offer: itemTodayOffer.checked,
+      show_for_you: itemForYou.checked,
+      sort_order: Number(itemSortOrder.value || 0)
     };
   }
 
@@ -246,19 +642,19 @@
     });
     itemImage.value = uploaded.url;
     itemImageFile.value = '';
+    updateMenuFileText();
     return uploaded.url;
   }
 
   function renderMenu() {
     adminMenuBody.replaceChildren();
-    const foodCount = menu.filter((item) => item.category === 'food').length;
-    const drinkCount = menu.filter((item) => item.category === 'drink').length;
-    adminCount.textContent = `${menu.length} món - ${foodCount} đồ ăn, ${drinkCount} nước uống`;
+    adminCount.textContent = `${menu.length} món`;
+    renderCategoryList();
 
     if (menu.length === 0) {
       const row = document.createElement('tr');
       const cell = document.createElement('td');
-      cell.colSpan = 5;
+      cell.colSpan = 8;
       cell.textContent = 'Menu đang trống.';
       row.append(cell);
       adminMenuBody.append(row);
@@ -269,19 +665,40 @@
       const row = document.createElement('tr');
 
       const name = document.createElement('td');
-      name.textContent = item.name;
+      const title = document.createElement('strong');
+      title.textContent = item.name;
+      const description = document.createElement('small');
+      description.className = 'muted-line';
+      description.textContent = item.description || 'Chưa có mô tả';
+      name.append(title, description);
 
       const category = document.createElement('td');
-      category.textContent = categoryLabels[item.category] || 'Chưa phân loại';
+      category.textContent = categoryLabel(item.category);
 
       const price = document.createElement('td');
       price.textContent = api.formatCurrency(item.price);
+
+      const special = document.createElement('td');
+      const specialLabels = [];
+      if (item.show_today_offer) {
+        specialLabels.push('Ưu đãi');
+      }
+      if (item.show_for_you) {
+        specialLabels.push('Dành cho bạn');
+      }
+      special.textContent = specialLabels.length ? specialLabels.join(', ') : '-';
+
+      const featured = document.createElement('td');
+      featured.textContent = item.featured ? 'Có' : '-';
 
       const status = document.createElement('td');
       const pill = document.createElement('span');
       pill.className = `status-pill${item.available ? '' : ' off'}`;
       pill.textContent = item.available ? 'Đang bán' : 'Tạm ẩn';
       status.append(pill);
+
+      const sort = document.createElement('td');
+      sort.textContent = item.sort_order || 0;
 
       const actions = document.createElement('td');
       const actionRow = document.createElement('div');
@@ -301,13 +718,13 @@
 
       actionRow.append(edit, remove);
       actions.append(actionRow);
-      row.append(name, category, price, status, actions);
+      row.append(name, category, price, special, featured, status, sort, actions);
       adminMenuBody.append(row);
     }
   }
 
   async function loadMenu() {
-    adminMenuBody.innerHTML = '<tr><td colspan="5">Đang tải menu...</td></tr>';
+    adminMenuBody.innerHTML = '<tr><td colspan="8">Đang tải menu...</td></tr>';
     try {
       menu = await api.getMenu(true);
       renderMenu();
@@ -315,7 +732,7 @@
       adminMenuBody.innerHTML = '';
       const row = document.createElement('tr');
       const cell = document.createElement('td');
-      cell.colSpan = 5;
+      cell.colSpan = 8;
       cell.textContent = error.message;
       row.append(cell);
       adminMenuBody.append(row);
@@ -339,6 +756,7 @@
 
       resetForm();
       await loadMenu();
+      closeAdminModals();
     } catch (error) {
       setMessage(error.message, true);
     }
@@ -1195,13 +1613,43 @@
       loadTables();
     } else if (tabId === 'liveTablesTab') {
       loadLiveTables();
+    } else if (tabId === 'menuTab') {
+      loadCategories();
+      loadMenu();
     } else if (tabId === 'restaurantTab') {
       loadRestaurantInfo();
     }
   }
 
   form.addEventListener('submit', saveItem);
-  document.getElementById('resetForm').addEventListener('click', resetForm);
+  itemName.addEventListener('input', updateMenuCounters);
+  itemDescription.addEventListener('input', updateMenuCounters);
+  itemImageFile.addEventListener('change', updateMenuFileText);
+  itemAvailableToggle.addEventListener('click', () => {
+    setItemAvailableState(itemAvailable.value !== '1');
+  });
+  newMenuItemButton.addEventListener('click', openMenuItemModal);
+  itemDisplayToggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    toggleDisplayOptionMenu();
+  });
+  itemDisplayMenu.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+  [itemTodayOffer, itemForYou, itemFeatured].forEach((input) => {
+    input.addEventListener('change', updateDisplayOptionSummary);
+  });
+  categoryForm.addEventListener('submit', saveCategory);
+  document.getElementById('resetCategoryForm').addEventListener('click', resetCategoryForm);
+  newCategoryButton.addEventListener('click', openCategoryModal);
+  closeMenuItemModal.addEventListener('click', closeAdminModals);
+  closeCategoryModal.addEventListener('click', closeAdminModals);
+  adminModalBackdrop.addEventListener('click', closeAdminModals);
+  document.addEventListener('click', (event) => {
+    if (!itemDisplaySelect.contains(event.target)) {
+      closeDisplayOptionMenu();
+    }
+  });
   restaurantForm.addEventListener('submit', saveRestaurantInfo);
 
   tableForm.addEventListener('submit', saveTable);
@@ -1211,6 +1659,16 @@
   backToTablesButton.addEventListener('click', showTableManagerScreen);
   closeSessionButton.addEventListener('click', handleBillAction);
   window.addEventListener('afterprint', closePrintView);
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !itemDisplayMenu.hidden) {
+      closeDisplayOptionMenu();
+      return;
+    }
+
+    if (event.key === 'Escape' && !adminModalBackdrop.hidden) {
+      closeAdminModals();
+    }
+  });
 
   document.querySelectorAll('.tab-button').forEach((button) => {
     button.addEventListener('click', () => switchTab(button.dataset.tab));
@@ -1218,5 +1676,6 @@
 
   loadRestaurantInfo();
   loadLiveTables();
+  loadCategories();
   loadMenu();
 })();

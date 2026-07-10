@@ -65,6 +65,26 @@
     getMenu(includeUnavailable) {
       return request(`/api/menu${includeUnavailable ? '?all=1' : ''}`);
     },
+    getMenuCategories(includeHidden) {
+      return request(`/api/menu/categories${includeHidden ? '?all=1' : ''}`);
+    },
+    createMenuCategory(payload) {
+      return request('/api/menu/categories', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    },
+    updateMenuCategory(id, payload) {
+      return request(`/api/menu/categories/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      });
+    },
+    deleteMenuCategory(id) {
+      return request(`/api/menu/categories/${id}`, {
+        method: 'DELETE'
+      });
+    },
     createMenuItem(payload) {
       return request('/api/menu', {
         method: 'POST',

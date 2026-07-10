@@ -4,17 +4,24 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pho Viet - Gọi món</title>
-    <link rel="stylesheet" href="/css/styles.css?v=28">
+    <link rel="stylesheet" href="/css/styles.css?v=55">
   </head>
-  <body>
+  <body class="customer-page">
     <header class="app-header">
       <div class="brand">
         <span class="brand-mark" data-restaurant-mark>PV</span>
         <span>
           <strong data-restaurant-name>Pho Viet</strong>
-          <small id="tableToken" hidden></small>
         </span>
       </div>
+      <button class="cart-toggle-button" id="cartToggle" type="button" aria-label="Mở giỏ hàng" aria-haspopup="dialog" aria-controls="cartSheet">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 5h2l2 11h9l2-7H8"></path>
+          <circle cx="10" cy="20" r="1.5"></circle>
+          <circle cx="17" cy="20" r="1.5"></circle>
+        </svg>
+        <span class="cart-badge" id="cartBadge" hidden>0</span>
+      </button>
     </header>
 
     <main class="customer-shell">
@@ -25,35 +32,44 @@
             <p id="tableNotice">Quét QR trên bàn khi đặt món.</p>
           </div>
         </div>
+        <div class="category-tabs" id="categoryTabs" aria-label="Danh mục món"></div>
         <div class="menu-list" id="menuList" aria-live="polite"></div>
       </section>
 
-      <aside class="cart-area" aria-labelledby="cartTitle">
-        <div class="section-bar compact">
-          <div>
-            <h2 id="cartTitle">Giỏ hàng</h2>
-            <p id="cartCount">Chưa có món</p>
-          </div>
+      <div class="sheet-backdrop" id="cartBackdrop" hidden></div>
+      <aside class="cart-area cart-sheet" id="cartSheet" aria-labelledby="cartTitle" role="dialog" aria-modal="true" hidden>
+        <div class="cart-sheet-handle" aria-hidden="true"></div>
+        <button class="cart-sheet-close" id="cartSheetClose" type="button" aria-label="Đóng giỏ hàng">×</button>
+        <div class="cart-tabs" role="tablist" aria-label="Giỏ hàng">
+          <button class="cart-tab-button is-active" id="cartCurrentTab" type="button" role="tab" aria-selected="true" aria-controls="cartCurrentPanel">
+            Món đang chọn
+          </button>
+          <button class="cart-tab-button" id="cartHistoryTab" type="button" role="tab" aria-selected="false" aria-controls="cartHistoryPanel">
+            Xem lại món đã đặt
+          </button>
         </div>
-        <div class="cart-list" id="cartItems"></div>
-        <div class="cart-footer">
-          <div class="total-row">
-            <span>Tổng</span>
-            <strong id="cartTotal">0 đ</strong>
+
+        <section class="cart-tab-panel is-active" id="cartCurrentPanel" role="tabpanel" aria-labelledby="cartCurrentTab">
+          <h2 class="sr-only" id="cartTitle">Giỏ hàng</h2>
+          <p class="cart-count-line" id="cartCount">Chưa có món</p>
+          <div class="cart-list" id="cartItems"></div>
+          <div class="cart-footer">
+            <div class="total-row">
+              <span>Tổng</span>
+              <strong id="cartTotal">0 đ</strong>
+            </div>
+            <button class="primary-button" id="submitOrder" type="button" disabled>Đặt món</button>
+            <p class="message" id="orderMessage" aria-live="polite" hidden></p>
           </div>
-          <button class="primary-button" id="submitOrder" type="button" disabled>Đặt món</button>
-          <p class="message" id="orderMessage" aria-live="polite" hidden></p>
-          <div class="ordered-review" id="orderedReview" hidden>
-            <button class="review-order-button" id="reviewOrdersButton" type="button">
-              Xem lại món đã đặt
-            </button>
-            <div class="ordered-list" id="orderedList" aria-live="polite" hidden></div>
-          </div>
-        </div>
+        </section>
+
+        <section class="cart-tab-panel" id="cartHistoryPanel" role="tabpanel" aria-labelledby="cartHistoryTab" hidden>
+          <div class="ordered-list" id="orderedList" aria-live="polite" hidden></div>
+        </section>
       </aside>
     </main>
 
-    <script src="/js/api.js?v=5"></script>
-    <script src="/js/customer.js?v=13"></script>
+    <script src="/js/api.js?v=6"></script>
+    <script src="/js/customer.js?v=25"></script>
   </body>
 </html>

@@ -1,27 +1,42 @@
 (function () {
   const api = window.orderApi;
   const menuList = document.getElementById('menuList');
+  const categoryTabs = document.getElementById('categoryTabs');
   const cartItems = document.getElementById('cartItems');
   const cartCount = document.getElementById('cartCount');
   const cartTotal = document.getElementById('cartTotal');
   const orderMessage = document.getElementById('orderMessage');
-  const orderedReview = document.getElementById('orderedReview');
-  const reviewOrdersButton = document.getElementById('reviewOrdersButton');
   const orderedList = document.getElementById('orderedList');
   const submitOrder = document.getElementById('submitOrder');
-  const tableTokenLabel = document.getElementById('tableToken');
+  const cartToggle = document.getElementById('cartToggle');
+  const cartBadge = document.getElementById('cartBadge');
+  const cartSheet = document.getElementById('cartSheet');
+  const cartBackdrop = document.getElementById('cartBackdrop');
+  const cartSheetClose = document.getElementById('cartSheetClose');
+  const cartCurrentTab = document.getElementById('cartCurrentTab');
+  const cartHistoryTab = document.getElementById('cartHistoryTab');
+  const cartCurrentPanel = document.getElementById('cartCurrentPanel');
+  const cartHistoryPanel = document.getElementById('cartHistoryPanel');
   const tableNotice = document.getElementById('tableNotice');
 
   const params = new URLSearchParams(window.location.search);
   const tableToken = getTableTokenFromUrl();
   const cart = new Map();
   let menu = [];
+  let menuCategories = [];
   let currentTable = null;
   let orderedListOpen = false;
   let reviewPromptTimer = null;
-  const categoryOrder = [
-    { key: 'food', label: 'Đồ ăn' },
-    { key: 'drink', label: 'Nước uống' }
+  let sheetCloseTimer = null;
+  let sheetTouchStartY = 0;
+  let sheetTouchCurrentY = 0;
+  const TODAY_OFFER_KEY = 'today-offer';
+  const FOR_YOU_KEY = 'for-you';
+  const fallbackCategories = [
+    { key: TODAY_OFFER_KEY, name: 'Ưu đãi hôm nay', icon: '🔥', color: '#e8590c', card_layout: 'horizontal', is_system: true },
+    { key: FOR_YOU_KEY, name: 'Dành cho bạn', icon: '✨', color: '#24745c', card_layout: 'vertical', is_system: true },
+    { key: 'food', name: 'Đồ ăn', icon: '🍽', color: '#24745c', card_layout: 'vertical', is_system: false },
+    { key: 'drink', name: 'Nước uống', icon: '🥤', color: '#1f6feb', card_layout: 'vertical', is_system: false }
   ];
   const orderStatusLabels = {
     pending: 'Chưa làm',
@@ -31,11 +46,6 @@
     cancelled: 'Đã hủy',
     paid: 'Đã thanh toán'
   };
-
-  function setHeaderSubtitle(text) {
-    tableTokenLabel.textContent = text || '';
-    tableTokenLabel.hidden = !text;
-  }
 
   async function loadRestaurantInfo() {
     try {
@@ -82,13 +92,12 @@
     reviewPromptTimer = null;
   }
 
-  function showReviewPromptAfterSuccess() {
+  function hideOrderMessageAfterSuccess() {
     clearReviewPromptTimer();
     reviewPromptTimer = window.setTimeout(() => {
       reviewPromptTimer = null;
       orderMessage.textContent = '';
       orderMessage.hidden = true;
-      showOrderedReviewPrompt();
     }, 1000);
   }
 
@@ -112,6 +121,214 @@
 
   function statusLabel(status) {
     return orderStatusLabels[status] || status || 'Không rõ';
+  }
+
+  function categoryLabel(categoryKey) {
+    return menuCategories.find((category) => category.key === categoryKey)?.name
+      || fallbackCategories.find((category) => category.key === categoryKey)?.name
+      || categoryKey
+      || 'Món khác';
+  }
+
+  function categoryMeta(categoryKey) {
+    return menuCategories.find((category) => category.key === categoryKey)
+      || fallbackCategories.find((category) => category.key === categoryKey)
+      || { key: categoryKey, name: categoryLabel(categoryKey), icon: '', color: '#24745c', card_layout: 'vertical', is_system: false };
+  }
+
+  function itemsForSection(category) {
+    if (category.key === TODAY_OFFER_KEY) {
+      return menu.filter((item) => item.show_today_offer);
+    }
+
+    if (category.key === FOR_YOU_KEY) {
+      return menu.filter((item) => item.show_for_you);
+    }
+
+    return menu.filter((item) => item.category === category.key);
+  }
+
+  function productCategories() {
+    const keysInMenu = new Set(menu.map((item) => item.category));
+    const known = menuCategories.filter((category) => !category.is_system && keysInMenu.has(category.key));
+    const knownKeys = new Set(known.map((category) => category.key));
+    const missing = [...keysInMenu]
+      .filter((key) => !knownKeys.has(key))
+      .map((key) => categoryMeta(key));
+
+    return [...known, ...missing];
+  }
+
+  function activeSections() {
+    const fixedSections = menuCategories
+      .filter((category) => category.is_system)
+      .filter((category) => [TODAY_OFFER_KEY, FOR_YOU_KEY].includes(category.key));
+
+    return [...fixedSections, ...productCategories()]
+      .map((category) => ({
+        ...category,
+        items: itemsForSection(category)
+      }))
+      .filter((section) => section.items.length > 0);
+  }
+
+  function captureHorizontalMenuScroll() {
+    const positions = new Map();
+
+    document.querySelectorAll('.menu-category-grid.is-horizontal').forEach((grid) => {
+      const categoryKey = grid.closest('.menu-category')?.id?.replace(/^category-/, '');
+
+      if (categoryKey) {
+        positions.set(categoryKey, grid.scrollLeft);
+      }
+    });
+
+    return positions;
+  }
+
+  function restoreHorizontalMenuScroll(positions) {
+    if (!positions?.size) {
+      return;
+    }
+
+    document.querySelectorAll('.menu-category-grid.is-horizontal').forEach((grid) => {
+      const categoryKey = grid.closest('.menu-category')?.id?.replace(/^category-/, '');
+      const scrollLeft = positions.get(categoryKey);
+
+      if (scrollLeft !== undefined) {
+        grid.scrollLeft = scrollLeft;
+      }
+    });
+  }
+
+  function cartSummary() {
+    const entries = Array.from(cart.values());
+    const totalQuantity = entries.reduce((sum, entry) => sum + entry.quantity, 0);
+    const totalPrice = entries.reduce((sum, entry) => sum + entry.quantity * entry.item.price, 0);
+
+    return { entries, totalQuantity, totalPrice };
+  }
+
+  function updateCartBadge(totalQuantity) {
+    cartBadge.textContent = totalQuantity;
+    cartBadge.hidden = totalQuantity === 0;
+    cartToggle.setAttribute(
+      'aria-label',
+      totalQuantity ? `Mở giỏ hàng, ${totalQuantity} món` : 'Mở giỏ hàng'
+    );
+  }
+
+  function bumpCartBadge() {
+    cartBadge.classList.remove('is-bumping');
+    cartToggle.classList.remove('is-pulsing');
+    void cartBadge.offsetWidth;
+    cartBadge.classList.add('is-bumping');
+    cartToggle.classList.add('is-pulsing');
+
+    window.setTimeout(() => {
+      cartBadge.classList.remove('is-bumping');
+      cartToggle.classList.remove('is-pulsing');
+    }, 420);
+  }
+
+  function setCartTab(tab) {
+    const isHistory = tab === 'history';
+
+    cartCurrentTab.classList.toggle('is-active', !isHistory);
+    cartHistoryTab.classList.toggle('is-active', isHistory);
+    cartCurrentTab.setAttribute('aria-selected', String(!isHistory));
+    cartHistoryTab.setAttribute('aria-selected', String(isHistory));
+    cartCurrentPanel.hidden = isHistory;
+    cartHistoryPanel.hidden = !isHistory;
+    cartCurrentPanel.classList.toggle('is-active', !isHistory);
+    cartHistoryPanel.classList.toggle('is-active', isHistory);
+  }
+
+  function openCartSheet(tab = 'current', loadHistory = false) {
+    window.clearTimeout(sheetCloseTimer);
+    cartSheet.hidden = false;
+    cartBackdrop.hidden = false;
+    document.body.classList.add('sheet-open');
+    setCartTab(tab);
+
+    window.requestAnimationFrame(() => {
+      cartSheet.classList.add('is-open');
+      cartBackdrop.classList.add('is-open');
+    });
+
+    if (tab === 'history' && loadHistory) {
+      loadOrderedReview();
+    }
+  }
+
+  function closeCartSheet() {
+    cartSheet.classList.remove('is-open');
+    cartBackdrop.classList.remove('is-open');
+    document.body.classList.remove('sheet-open');
+
+    sheetCloseTimer = window.setTimeout(() => {
+      cartSheet.hidden = true;
+      cartBackdrop.hidden = true;
+    }, 240);
+  }
+
+  function createFlyerContent(item) {
+    if (item.image) {
+      const image = document.createElement('img');
+      image.src = item.image;
+      image.alt = '';
+      image.onerror = () => {
+        image.replaceWith(createFallback(item.name));
+      };
+      return image;
+    }
+
+    return createFallback(item.name);
+  }
+
+  function animateAddToCart(item, triggerElement) {
+    if (!triggerElement || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+
+    const targetRect = cartToggle.getBoundingClientRect();
+    const card = triggerElement.closest('.menu-card');
+    const source = card?.querySelector('.food-image, .food-fallback') || triggerElement;
+    const sourceRect = source.getBoundingClientRect();
+    const flyer = document.createElement('div');
+    const size = Math.min(46, Math.max(34, sourceRect.width || 36));
+
+    flyer.className = 'cart-flyer';
+    flyer.style.width = `${size}px`;
+    flyer.style.height = `${size}px`;
+    flyer.style.left = `${sourceRect.left + sourceRect.width / 2 - size / 2}px`;
+    flyer.style.top = `${sourceRect.top + sourceRect.height / 2 - size / 2}px`;
+    flyer.append(createFlyerContent(item));
+    document.body.append(flyer);
+
+    const endX = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
+    const endY = targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2);
+    if (!flyer.animate) {
+      window.setTimeout(() => flyer.remove(), 620);
+      return;
+    }
+
+    const animation = flyer.animate(
+      [
+        { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' },
+        { opacity: 0.94, transform: `translate3d(${endX * 0.66}px, ${endY * 0.66 - 28}px, 0) scale(0.72)` },
+        { opacity: 0, transform: `translate3d(${endX}px, ${endY}px, 0) scale(0.18)` }
+      ],
+      {
+        duration: 620,
+        easing: 'cubic-bezier(0.2, 0.72, 0.22, 1)'
+      }
+    );
+
+    animation.finished.then(
+      () => flyer.remove(),
+      () => flyer.remove()
+    );
   }
 
   function createTrashIcon() {
@@ -148,20 +365,10 @@
     return button;
   }
 
-  function showOrderedReviewPrompt() {
-    if (!currentTable) {
-      return;
-    }
-
-    orderedReview.removeAttribute('hidden');
-  }
-
   function hideOrderedReview() {
-    orderedReview.setAttribute('hidden', '');
     orderedList.setAttribute('hidden', '');
     orderedListOpen = false;
     orderedList.replaceChildren();
-    reviewOrdersButton.textContent = 'Xem lại món đã đặt';
   }
 
   function renderOrderedBill(bill) {
@@ -235,19 +442,19 @@
 
   async function loadOrderedReview() {
     if (!currentTable) {
-      setMessage('Vui lòng quét QR trên bàn để xem món đã đặt.', true);
+      orderedList.removeAttribute('hidden');
+      orderedList.innerHTML = '<p class="empty-state compact-empty">Vui lòng quét QR trên bàn để xem món đã đặt.</p>';
       return;
     }
 
     orderedList.removeAttribute('hidden');
     orderedList.innerHTML = '<p class="empty-state compact-empty">Đang tải món đã đặt...</p>';
-    reviewOrdersButton.disabled = true;
+    cartHistoryTab.disabled = true;
 
     try {
       const bill = await api.getCurrentBill(currentTable.id);
       renderOrderedBill(bill);
       orderedListOpen = true;
-      reviewOrdersButton.textContent = 'Ẩn danh sách món đã đặt';
     } catch (error) {
       orderedList.innerHTML = '';
       const empty = document.createElement('p');
@@ -255,7 +462,7 @@
       empty.textContent = error.message;
       orderedList.append(empty);
     } finally {
-      reviewOrdersButton.disabled = false;
+      cartHistoryTab.disabled = false;
     }
   }
 
@@ -298,7 +505,6 @@
       } else {
         orderedList.removeAttribute('hidden');
         orderedListOpen = true;
-        reviewOrdersButton.textContent = 'Ẩn danh sách món đã đặt';
         renderOrderedBill(bill);
       }
 
@@ -324,8 +530,6 @@
         return;
       }
 
-      showOrderedReviewPrompt();
-
       if (orderedListOpen) {
         renderOrderedBill(bill);
       }
@@ -334,22 +538,11 @@
     }
   }
 
-  function toggleOrderedReview() {
-    if (orderedListOpen) {
-      orderedList.setAttribute('hidden', '');
-      orderedListOpen = false;
-      reviewOrdersButton.textContent = 'Xem lại món đã đặt';
-      return;
-    }
-
-    loadOrderedReview();
-  }
-
   function getQuantity(id) {
     return cart.get(id)?.quantity || 0;
   }
 
-  function changeQuantity(item, delta) {
+  function changeQuantity(item, delta, triggerElement) {
     const nextQuantity = Math.max(0, getQuantity(item.id) + delta);
 
     if (nextQuantity === 0) {
@@ -358,8 +551,16 @@
       cart.set(item.id, { item, quantity: nextQuantity });
     }
 
+    if (delta > 0) {
+      animateAddToCart(item, triggerElement);
+    }
+
     setMessage('');
     render();
+
+    if (delta > 0) {
+      bumpCartBadge();
+    }
   }
 
   function createFoodVisual(item) {
@@ -386,34 +587,70 @@
   }
 
   function createQuantityControls(item) {
+    const quantity = getQuantity(item.id);
     const row = document.createElement('div');
     row.className = 'quantity-row';
+    if (quantity === 0) {
+      row.classList.add('is-zero');
+    }
 
     const minus = document.createElement('button');
-    minus.className = 'qty-button';
+    minus.className = 'qty-button minus-button';
     minus.type = 'button';
     minus.textContent = '-';
     minus.setAttribute('aria-label', `Giảm ${item.name}`);
-    minus.disabled = getQuantity(item.id) === 0;
+    minus.disabled = quantity === 0;
     minus.addEventListener('click', () => changeQuantity(item, -1));
 
     const value = document.createElement('span');
     value.className = 'qty-value';
-    value.textContent = getQuantity(item.id);
+    value.textContent = quantity;
 
     const plus = document.createElement('button');
-    plus.className = 'qty-button';
+    plus.className = 'qty-button plus-button';
     plus.type = 'button';
     plus.textContent = '+';
     plus.setAttribute('aria-label', `Thêm ${item.name}`);
-    plus.addEventListener('click', () => changeQuantity(item, 1));
+    plus.addEventListener('click', () => changeQuantity(item, 1, plus));
 
     row.append(minus, value, plus);
     return row;
   }
 
+  function renderCategoryTabs() {
+    categoryTabs.replaceChildren();
+    const categories = activeSections();
+
+    if (categories.length <= 1) {
+      categoryTabs.hidden = true;
+      return;
+    }
+
+    categoryTabs.hidden = false;
+
+    for (const category of categories) {
+      const button = document.createElement('button');
+      button.className = 'category-tab-chip';
+      button.type = 'button';
+      button.style.setProperty('--category-color', category.color || '#24745c');
+      const icon = document.createElement('span');
+      icon.textContent = category.icon || '•';
+      const name = document.createElement('strong');
+      name.textContent = category.name;
+      button.append(icon, name);
+      button.addEventListener('click', () => {
+        document.getElementById(`category-${category.key}`)?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      });
+      categoryTabs.append(button);
+    }
+  }
+
   function renderMenu() {
     menuList.replaceChildren();
+    renderCategoryTabs();
 
     if (menu.length === 0) {
       const empty = document.createElement('p');
@@ -423,8 +660,8 @@
       return;
     }
 
-    for (const category of categoryOrder) {
-      const items = menu.filter((item) => item.category === category.key);
+    for (const sectionData of activeSections()) {
+      const { items, ...category } = sectionData;
 
       if (items.length === 0) {
         continue;
@@ -432,16 +669,35 @@
 
       const section = document.createElement('section');
       section.className = 'menu-category';
+      section.id = `category-${category.key}`;
 
       const heading = document.createElement('h2');
       heading.className = 'menu-category-title';
-      heading.textContent = category.label;
+      const titleText = document.createElement('span');
+      titleText.textContent = category.name;
+
+      if (category.is_system) {
+        heading.classList.add('is-system');
+        heading.append(titleText);
+      } else {
+        const icon = document.createElement('span');
+        icon.className = 'menu-category-icon';
+        icon.style.setProperty('--category-color', category.color || '#24745c');
+        icon.textContent = category.icon || '•';
+        heading.append(icon, titleText);
+      }
 
       const grid = document.createElement('div');
       grid.className = 'menu-category-grid';
+      if (category.key === FOR_YOU_KEY) {
+        grid.classList.add('is-recommendation');
+      }
+      if (category.card_layout === 'horizontal') {
+        grid.classList.add('is-horizontal');
+      }
 
       for (const item of items) {
-        grid.append(createMenuCard(item));
+        grid.append(category.key === FOR_YOU_KEY ? createRecommendationCard(item) : createMenuCard(item));
       }
 
       section.append(heading, grid);
@@ -452,6 +708,9 @@
   function createMenuCard(item) {
     const card = document.createElement('article');
     card.className = 'menu-card';
+    if (item.featured) {
+      card.classList.add('is-featured');
+    }
 
     const content = document.createElement('div');
     content.className = 'menu-content';
@@ -463,21 +722,75 @@
     price.className = 'price';
     price.textContent = api.formatCurrency(item.price);
 
-    content.append(title, price);
+    content.append(title);
+
+    if (item.description) {
+      const description = document.createElement('p');
+      description.className = 'menu-description';
+      description.textContent = item.description;
+      content.append(description);
+    }
+
+    content.append(price);
     card.append(createFoodVisual(item), content, createQuantityControls(item));
+
+    if (item.featured) {
+      const badge = document.createElement('span');
+      badge.className = 'featured-badge';
+      badge.textContent = 'Nổi bật';
+      card.append(badge);
+    }
+
+    return card;
+  }
+
+  function createRecommendationCard(item) {
+    const card = document.createElement('article');
+    card.className = 'recommendation-card';
+
+    const visual = document.createElement('div');
+    visual.className = 'recommendation-visual';
+    visual.append(createFoodVisual(item), createQuantityControls(item));
+
+    if (item.featured) {
+      const badge = document.createElement('span');
+      badge.className = 'recommendation-badge';
+      badge.textContent = 'Bán chạy';
+      visual.append(badge);
+    }
+
+    const content = document.createElement('div');
+    content.className = 'recommendation-content';
+
+    const title = document.createElement('h3');
+    title.textContent = item.name;
+    const price = document.createElement('div');
+    price.className = 'price';
+    price.textContent = api.formatCurrency(item.price);
+
+    content.append(title);
+
+    if (item.description) {
+      const description = document.createElement('p');
+      description.className = 'menu-description';
+      description.textContent = item.description;
+      content.append(description);
+    }
+
+    content.append(price);
+    card.append(visual, content);
     return card;
   }
 
   function renderCart() {
     cartItems.replaceChildren();
 
-    const entries = Array.from(cart.values());
-    const totalQuantity = entries.reduce((sum, entry) => sum + entry.quantity, 0);
-    const totalPrice = entries.reduce((sum, entry) => sum + entry.quantity * entry.item.price, 0);
+    const { entries, totalQuantity, totalPrice } = cartSummary();
 
     cartCount.textContent = totalQuantity ? `${totalQuantity} món` : 'Chưa có món';
     cartTotal.textContent = api.formatCurrency(totalPrice);
     submitOrder.disabled = entries.length === 0;
+    updateCartBadge(totalQuantity);
 
     if (entries.length === 0) {
       const empty = document.createElement('p');
@@ -504,14 +817,22 @@
   }
 
   function render() {
+    const horizontalScroll = captureHorizontalMenuScroll();
     renderMenu();
+    restoreHorizontalMenuScroll(horizontalScroll);
+    window.requestAnimationFrame(() => restoreHorizontalMenuScroll(horizontalScroll));
     renderCart();
   }
 
   async function loadMenu() {
     menuList.innerHTML = '<p class="empty-state">Đang tải menu...</p>';
     try {
-      menu = await api.getMenu(false);
+      const [categories, items] = await Promise.all([
+        api.getMenuCategories(false),
+        api.getMenu(false)
+      ]);
+      menuCategories = categories;
+      menu = items;
       render();
     } catch (error) {
       menuList.innerHTML = '';
@@ -549,37 +870,65 @@
       render();
       hideOrderedReview();
       setMessage('Đặt món thành công. Bếp đã nhận đơn của bạn.');
-      showReviewPromptAfterSuccess();
+      hideOrderMessageAfterSuccess();
     } catch (error) {
       setMessage(error.message, true);
       submitOrder.disabled = false;
     }
   }
 
+  cartToggle.addEventListener('click', () => openCartSheet('current'));
+  cartBackdrop.addEventListener('click', closeCartSheet);
+  cartSheetClose.addEventListener('click', closeCartSheet);
+  cartCurrentTab.addEventListener('click', () => setCartTab('current'));
+  cartHistoryTab.addEventListener('click', () => {
+    setCartTab('history');
+    loadOrderedReview();
+  });
+  cartSheet.addEventListener('touchstart', (event) => {
+    sheetTouchStartY = event.touches[0]?.clientY || 0;
+    sheetTouchCurrentY = sheetTouchStartY;
+  }, { passive: true });
+  cartSheet.addEventListener('touchmove', (event) => {
+    sheetTouchCurrentY = event.touches[0]?.clientY || sheetTouchStartY;
+    const deltaY = Math.max(0, sheetTouchCurrentY - sheetTouchStartY);
+
+    if (deltaY > 0) {
+      cartSheet.style.setProperty('--sheet-drag', `${Math.min(deltaY, 120)}px`);
+    }
+  }, { passive: true });
+  cartSheet.addEventListener('touchend', () => {
+    const deltaY = sheetTouchCurrentY - sheetTouchStartY;
+    cartSheet.style.removeProperty('--sheet-drag');
+
+    if (deltaY > 72) {
+      closeCartSheet();
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !cartSheet.hidden) {
+      closeCartSheet();
+    }
+  });
   submitOrder.addEventListener('click', placeOrder);
-  reviewOrdersButton.addEventListener('click', toggleOrderedReview);
 
   async function initTable() {
     if (!tableToken) {
-      setHeaderSubtitle('');
       tableNotice.textContent = 'Quét QR trên bàn khi đặt món.';
       await loadMenu();
       return;
     }
 
-    setHeaderSubtitle('Đang kiểm tra bàn...');
     tableNotice.textContent = 'Đang nhận diện bàn từ QR.';
 
     try {
       currentTable = await api.getTableByToken(tableToken);
-      setHeaderSubtitle(currentTable.name);
       tableNotice.textContent = `Bạn đang gọi món tại: ${currentTable.name}`;
       await loadMenu();
       refreshOrderedReviewAvailability();
     } catch (error) {
       currentTable = null;
       hideOrderedReview();
-      setHeaderSubtitle('QR không hợp lệ');
       tableNotice.textContent = error.message;
       setMessage(error.message, true);
       await loadMenu();

@@ -2,13 +2,13 @@ const { db } = require('./connection');
 const { generateToken } = require('../utils/token');
 
 const seedItems = [
-  { name: 'Bún bò', category: 'food', price: 45000 },
-  { name: 'Phở bò', category: 'food', price: 50000 },
-  { name: 'Cơm tấm', category: 'food', price: 40000 },
-  { name: 'Bánh mì', category: 'food', price: 25000 },
-  { name: 'Trà đào', category: 'drink', price: 30000 },
-  { name: 'Coca', category: 'drink', price: 15000 },
-  { name: 'Pepsi', category: 'drink', price: 15000 }
+  { name: 'Bún bò', category: 'food', description: 'Nước dùng đậm vị, bò mềm, rau thơm.', price: 45000, sort_order: 1 },
+  { name: 'Phở bò', category: 'food', description: 'Phở bò nóng với bánh phở mềm và nước dùng trong.', price: 50000, sort_order: 2 },
+  { name: 'Cơm tấm', category: 'food', description: 'Cơm tấm sườn, đồ chua và nước mắm.', price: 40000, sort_order: 3 },
+  { name: 'Bánh mì', category: 'food', description: 'Bánh mì giòn, nhân đầy đặn.', price: 25000, sort_order: 4 },
+  { name: 'Trà đào', category: 'drink', description: 'Trà đào mát, vị ngọt thanh.', price: 30000, sort_order: 1 },
+  { name: 'Coca', category: 'drink', description: 'Nước ngọt có gas.', price: 15000, sort_order: 2 },
+  { name: 'Pepsi', category: 'drink', description: 'Nước ngọt có gas.', price: 15000, sort_order: 3 }
 ];
 
 function createUniqueTableToken() {
@@ -32,8 +32,8 @@ function seedMenuItems() {
   }
 
   const insert = db.prepare(`
-    INSERT INTO menu_items (name, category, price, image, available)
-    VALUES (@name, @category, @price, @image, 1)
+    INSERT INTO menu_items (name, category, description, price, image, available, featured, sort_order)
+    VALUES (@name, @category, @description, @price, @image, 1, 0, @sort_order)
   `);
 
   const insertMany = db.transaction((items) => {

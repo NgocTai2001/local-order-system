@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pho Viet - Admin</title>
-    <link rel="stylesheet" href="/css/styles.css?v=29">
+    <link rel="stylesheet" href="/css/styles.css?v=55">
   </head>
   <body>
     <header class="app-header">
@@ -25,71 +25,235 @@
       </div>
 
       <section class="admin-tab-panel" id="menuTab" aria-labelledby="menuAdminTitle">
-        <div class="admin-shell">
-          <section class="editor-panel" aria-labelledby="formTitle">
+        <div class="menu-admin-layout">
+          <div class="admin-modal-backdrop" id="adminModalBackdrop" hidden></div>
+
+          <section class="editor-panel admin-modal" id="menuItemModal" aria-labelledby="formTitle" role="dialog" aria-modal="true" hidden>
             <div class="section-bar compact">
               <div>
-                <h1 id="formTitle">Thêm món</h1>
-                <p id="formMode">Nhập thông tin món</p>
+                <h1 id="formTitle">Thêm món mới</h1>
+                <p id="formMode">Tạo món để hiển thị trên trang order</p>
               </div>
+              <button class="modal-close-button" id="closeMenuItemModal" type="button" aria-label="Đóng">×</button>
             </div>
 
             <form id="menuForm" class="menu-form">
               <input type="hidden" id="itemId">
-              <label>
-                Tên món
-                <input id="itemName" name="name" type="text" maxlength="80" required>
-              </label>
-              <label>
-                Loại món
-                <select id="itemCategory" name="category" required>
-                  <option value="">Chọn loại</option>
-                  <option value="food">Đồ ăn</option>
-                  <option value="drink">Nước uống</option>
-                </select>
-              </label>
-              <label>
-                Giá
-                <input id="itemPrice" name="price" type="number" min="0" step="1000" required>
-              </label>
+              <div class="form-block-title">Thông tin cơ bản</div>
+              <div class="form-grid two">
+                <label class="form-field">
+                  <span class="form-label-row">
+                    <span class="field-icon" aria-hidden="true">◇</span>
+                    <span>Tên món <b>*</b></span>
+                  </span>
+                  <span class="counter-field">
+                    <input id="itemName" name="name" type="text" maxlength="100" placeholder="Nhập tên món" required>
+                    <small id="itemNameCount">0/100</small>
+                  </span>
+                </label>
+                <label class="form-field">
+                  <span class="form-label-row">
+                    <span class="field-icon" aria-hidden="true">▦</span>
+                    <span>Loại / Mục <b>*</b></span>
+                  </span>
+                  <select id="itemCategory" name="category" required>
+                    <option value="">Chọn loại / mục</option>
+                  </select>
+                </label>
+              </div>
+              <div class="form-grid two">
+                <label class="form-field">
+                  <span class="form-label-row">
+                    <span class="field-icon" aria-hidden="true">☷</span>
+                    <span>Mô tả</span>
+                  </span>
+                  <span class="counter-field textarea-counter-field">
+                    <textarea id="itemDescription" name="description" rows="3" maxlength="300" placeholder="Nhập mô tả món (tuỳ chọn)"></textarea>
+                    <small id="itemDescriptionCount">0/300</small>
+                  </span>
+                </label>
+                <label class="form-field">
+                  <span class="form-label-row">
+                    <span class="field-icon" aria-hidden="true">ⓢ</span>
+                    <span>Giá bán <b>*</b></span>
+                  </span>
+                  <span class="price-input-field">
+                    <input id="itemPrice" name="price" type="number" min="0" step="1000" placeholder="0" required>
+                    <span>VND</span>
+                  </span>
+                </label>
+              </div>
+              <div class="form-grid two">
+                <label class="form-field">
+                  <span class="form-label-row">
+                    <span class="field-icon" aria-hidden="true">▧</span>
+                    <span>Ảnh món ăn</span>
+                  </span>
+                  <span class="file-drop">
+                    <input id="itemImageFile" name="imageFile" type="file" accept="image/*">
+                    <span class="upload-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M12 16V4"></path>
+                        <path d="M7 9l5-5 5 5"></path>
+                        <path d="M20 16.5a4.5 4.5 0 0 1-4.5 4.5h-7A4.5 4.5 0 0 1 4 16.5"></path>
+                      </svg>
+                    </span>
+                    <span id="itemImageFileText">Kéo thả ảnh vào đây<br>hoặc bấm để chọn file</span>
+                  </span>
+                  <small>Định dạng: JPG, PNG, WEBP. Kích thước tối đa 5MB</small>
+                </label>
+                <div class="form-field display-options-field">
+                  <span class="form-label-row">
+                    <span class="field-icon" aria-hidden="true">⊙</span>
+                    <span>Tuỳ chọn hiển thị</span>
+                  </span>
+                  <div class="check-select" id="itemDisplaySelect">
+                    <button class="check-select-toggle" id="itemDisplayToggle" type="button" aria-expanded="false" aria-controls="itemDisplayMenu">
+                      <span id="itemDisplaySummary">Không áp dụng</span>
+                      <span aria-hidden="true">⌄</span>
+                    </button>
+                    <div class="check-select-menu" id="itemDisplayMenu" hidden>
+                      <label class="check-select-row">
+                        <input id="itemTodayOffer" name="show_today_offer" type="checkbox">
+                        <span>Ưu đãi hôm nay</span>
+                      </label>
+                      <label class="check-select-row">
+                        <input id="itemForYou" name="show_for_you" type="checkbox">
+                        <span>Dành cho bạn</span>
+                      </label>
+                      <label class="check-select-row">
+                        <input id="itemFeatured" name="featured" type="checkbox">
+                        <span>Gắn nhãn nổi bật</span>
+                      </label>
+                    </div>
+                  </div>
+                  <small>Một số tuỳ chọn sẽ chỉ hiển thị trong khoảng thời gian hoặc sự kiện nhất định.</small>
+                </div>
+              </div>
               <input id="itemImage" name="image" type="hidden">
-              <label>
-                Ảnh món ăn
-                <input id="itemImageFile" name="imageFile" type="file" accept="image/*">
-              </label>
-              <label class="checkbox-row">
-                <input id="itemAvailable" name="available" type="checkbox" checked>
-                Đang bán
-              </label>
-              <div class="form-actions">
-                <button class="primary-button" type="submit">Lưu món</button>
-                <button class="ghost-button" id="resetForm" type="button">Làm mới</button>
+              <div class="menu-form-divider"></div>
+              <div class="form-grid two status-grid">
+                <div class="form-section-group">
+                  <h3>Hiển thị & trạng thái</h3>
+                  <label class="form-field">
+                    <button class="status-toggle-control is-on" id="itemAvailableToggle" type="button" aria-pressed="true">
+                      <span class="toggle-switch" aria-hidden="true"></span>
+                      <span id="itemAvailableLabel">Đang bán</span>
+                    </button>
+                    <select id="itemAvailable" name="available" hidden>
+                      <option value="1">Đang bán</option>
+                      <option value="0">Tạm ẩn</option>
+                    </select>
+                    <small>Món sẽ hiển thị và có thể được đặt hàng.</small>
+                  </label>
+                </div>
+                <div class="form-section-group">
+                  <h3>Thứ tự hiển thị</h3>
+                  <label class="form-field">
+                    <input id="itemSortOrder" name="sort_order" type="number" step="1" value="0">
+                    <small>Số nhỏ sẽ hiển thị trước. Ví dụ: 1, 2, 3, ...</small>
+                  </label>
+                </div>
+              </div>
+              <div class="form-actions menu-modal-actions">
+                <button class="primary-button" type="submit">▣ Lưu món</button>
               </div>
               <p class="message" id="adminMessage" aria-live="polite"></p>
             </form>
           </section>
 
-          <section class="table-panel" aria-labelledby="menuAdminTitle">
-            <div class="section-bar">
-              <div>
-                <h2 id="menuAdminTitle">Menu</h2>
-                <p id="adminCount">0 món</p>
+          <div class="menu-side-stack">
+            <section class="table-panel category-panel" aria-labelledby="categoryAdminTitle">
+              <div class="section-bar category-header">
+                <div>
+                  <h2 id="categoryAdminTitle">Quản lý danh mục</h2>
+                  <p id="categoryCount">0 loại</p>
+                </div>
+                <button class="primary-button compact-button category-add-button" id="newCategoryButton" type="button">
+                  + Thêm loại mới
+                </button>
               </div>
+              <div class="table-wrap">
+                <table class="category-table">
+                  <thead>
+                    <tr>
+                      <th>STT</th>
+                      <th>Tên loại</th>
+                      <th>Trạng thái</th>
+                      <th>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="categoryBody"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="table-panel" aria-labelledby="menuAdminTitle">
+              <div class="section-bar">
+                <div>
+                  <h2 id="menuAdminTitle">Menu</h2>
+                  <p id="adminCount">0 món</p>
+                </div>
+                <button class="primary-button compact-button" id="newMenuItemButton" type="button">
+                  + Thêm món mới
+                </button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Món</th>
+                      <th>Loại</th>
+                      <th>Giá</th>
+                      <th>Mục đặc biệt</th>
+                      <th>Nổi bật</th>
+                      <th>Trạng thái</th>
+                      <th>Thứ tự</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminMenuBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <section class="admin-modal category-modal" id="categoryModal" aria-labelledby="categoryFormTitle" role="dialog" aria-modal="true" hidden>
+            <div class="section-bar compact">
+              <div>
+                <h2 id="categoryFormTitle">Thêm loại mới</h2>
+                <p id="categoryFormMode">Tạo danh mục để hiển thị trên trang order</p>
+              </div>
+              <button class="modal-close-button" id="closeCategoryModal" type="button" aria-label="Đóng">×</button>
             </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Món</th>
-                    <th>Loại</th>
-                    <th>Giá</th>
-                    <th>Trạng thái</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="adminMenuBody"></tbody>
-              </table>
-            </div>
+            <form id="categoryForm" class="category-form">
+              <input type="hidden" id="categoryId">
+              <label class="category-field category-name-field">
+                <span>Tên loại</span>
+                <input id="categoryName" type="text" maxlength="50" placeholder="Nhập tên loại danh mục" required>
+              </label>
+              <label class="category-field category-icon-field">
+                <span>Icon</span>
+                <input id="categoryIcon" type="text" maxlength="4" placeholder="🔥">
+              </label>
+              <label class="category-field category-color-field">
+                <span>Màu sắc</span>
+                <input id="categoryColor" type="color" value="#24745c" aria-label="Màu loại">
+              </label>
+              <label class="category-field category-order-field">
+                <span>Thứ tự hiển thị</span>
+                <input id="categorySortOrder" type="number" step="1" value="0" aria-label="Thứ tự loại">
+              </label>
+              <label class="inline-check category-visible-check">
+                <input id="categoryVisible" type="checkbox" checked>
+                Hiển thị
+              </label>
+              <div class="form-actions category-modal-actions">
+                <button class="primary-button compact-button category-save-button" type="submit">Lưu loại</button>
+                <button class="ghost-button compact-button category-reset-button" id="resetCategoryForm" type="button">Làm mới</button>
+              </div>
+              <p class="message category-message" id="categoryMessage" aria-live="polite"></p>
+            </form>
           </section>
         </div>
       </section>
@@ -264,7 +428,7 @@
       <section class="print-area" id="printArea" aria-hidden="true"></section>
     </main>
 
-    <script src="/js/api.js?v=5"></script>
-    <script src="/js/admin.js?v=19"></script>
+    <script src="/js/api.js?v=6"></script>
+    <script src="/js/admin.js?v=32"></script>
   </body>
 </html>

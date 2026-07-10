@@ -3,6 +3,10 @@ const menuController = require('../controllers/menuController');
 
 const router = express.Router();
 
+router.get('/categories', menuController.listMenuCategories);
+router.post('/categories', menuController.createMenuCategory);
+router.patch('/categories/:id', menuController.updateMenuCategory);
+router.delete('/categories/:id', menuController.deleteMenuCategory);
 router.get('/', menuController.listMenu);
 router.post('/', menuController.createMenuItem);
 router.put('/:id', menuController.updateMenuItem);

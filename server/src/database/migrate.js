@@ -34,24 +34,157 @@ function createTablesTable() {
   `);
 }
 
-function createMenuItemsTable() {
+function createMenuCategoriesTable() {
   db.exec(`
-    CREATE TABLE IF NOT EXISTS menu_items (
+    CREATE TABLE IF NOT EXISTS menu_categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL,
-      category TEXT NOT NULL DEFAULT 'food'
-        CHECK (category IN ('food', 'drink')),
-      price INTEGER NOT NULL CHECK (price >= 0),
-      image TEXT NOT NULL DEFAULT '',
-      available INTEGER NOT NULL DEFAULT 1 CHECK (available IN (0, 1)),
+      icon TEXT NOT NULL DEFAULT '',
+      color TEXT NOT NULL DEFAULT '#24745c',
+      visible INTEGER NOT NULL DEFAULT 1 CHECK (visible IN (0, 1)),
+      is_system INTEGER NOT NULL DEFAULT 0 CHECK (is_system IN (0, 1)),
+      card_layout TEXT NOT NULL DEFAULT 'vertical'
+        CHECK (card_layout IN ('vertical', 'horizontal')),
+      sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
 
+  ensureColumn('menu_categories', 'key', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('menu_categories', 'name', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('menu_categories', 'icon', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('menu_categories', 'color', "TEXT NOT NULL DEFAULT '#24745c'");
+  ensureColumn('menu_categories', 'visible', 'INTEGER NOT NULL DEFAULT 1');
+  ensureColumn('menu_categories', 'is_system', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('menu_categories', 'card_layout', "TEXT NOT NULL DEFAULT 'vertical'");
+  ensureColumn('menu_categories', 'sort_order', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('menu_categories', 'created_at', 'TEXT');
+  ensureColumn('menu_categories', 'updated_at', 'TEXT');
+
+  db.exec(`
+    INSERT INTO menu_categories (key, name, icon, color, visible, card_layout, sort_order, updated_at)
+    SELECT 'today-offer', 'Ưu đãi hôm nay', '🔥', '#e8590c', 1, 'horizontal', -20, datetime('now')
+    WHERE NOT EXISTS (SELECT 1 FROM menu_categories WHERE key = 'today-offer');
+
+    INSERT INTO menu_categories (key, name, icon, color, visible, card_layout, sort_order, updated_at)
+    SELECT 'for-you', 'Dành cho bạn', '✨', '#24745c', 1, 'vertical', -10, datetime('now')
+    WHERE NOT EXISTS (SELECT 1 FROM menu_categories WHERE key = 'for-you');
+
+    INSERT INTO menu_categories (key, name, icon, color, visible, card_layout, sort_order, updated_at)
+    SELECT 'food', 'Đồ ăn', '🍽', '#24745c', 1, 'vertical', 1, datetime('now')
+    WHERE NOT EXISTS (SELECT 1 FROM menu_categories WHERE key = 'food');
+
+    INSERT INTO menu_categories (key, name, icon, color, visible, card_layout, sort_order, updated_at)
+    SELECT 'drink', 'Nước uống', '🥤', '#1f6feb', 1, 'vertical', 2, datetime('now')
+    WHERE NOT EXISTS (SELECT 1 FROM menu_categories WHERE key = 'drink');
+
+    UPDATE menu_categories
+    SET
+      name = 'Ưu đãi hôm nay',
+      icon = '🔥',
+      color = '#e8590c',
+      is_system = 1,
+      card_layout = 'horizontal',
+      sort_order = -20
+    WHERE key = 'today-offer';
+
+    UPDATE menu_categories
+    SET
+      name = 'Dành cho bạn',
+      icon = '✨',
+      color = '#24745c',
+      is_system = 1,
+      card_layout = 'vertical',
+      sort_order = -10
+    WHERE key = 'for-you';
+
+    UPDATE menu_categories
+    SET
+      is_system = 0,
+      card_layout = 'vertical'
+    WHERE key NOT IN ('today-offer', 'for-you');
+
+    UPDATE menu_categories
+    SET card_layout = 'vertical'
+    WHERE key != 'today-offer'
+      AND (
+        card_layout NOT IN ('vertical', 'horizontal')
+       OR card_layout IS NULL
+       OR card_layout = ''
+      );
+  `);
+}
+
+function createMenuItemsTable() {
+  const needsRebuild = tableExists('menu_items') && tableSql('menu_items').includes('CHECK (category IN');
+
+  if (needsRebuild) {
+    db.pragma('foreign_keys = OFF');
+    db.exec('ALTER TABLE menu_items RENAME TO menu_items_legacy');
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS menu_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'food',
+      description TEXT NOT NULL DEFAULT '',
+      price INTEGER NOT NULL CHECK (price >= 0),
+      image TEXT NOT NULL DEFAULT '',
+      available INTEGER NOT NULL DEFAULT 1 CHECK (available IN (0, 1)),
+      featured INTEGER NOT NULL DEFAULT 0 CHECK (featured IN (0, 1)),
+      show_today_offer INTEGER NOT NULL DEFAULT 0 CHECK (show_today_offer IN (0, 1)),
+      show_for_you INTEGER NOT NULL DEFAULT 0 CHECK (show_for_you IN (0, 1)),
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
+  if (needsRebuild) {
+    db.exec(`
+      INSERT INTO menu_items (
+        id,
+        name,
+        category,
+        description,
+        price,
+        image,
+        available,
+        featured,
+        sort_order,
+        created_at,
+        updated_at
+      )
+      SELECT
+        id,
+        name,
+        COALESCE(NULLIF(category, ''), 'food'),
+        '',
+        price,
+        COALESCE(image, ''),
+        COALESCE(available, 1),
+        0,
+        id,
+        COALESCE(created_at, datetime('now')),
+        COALESCE(updated_at, created_at, datetime('now'))
+      FROM menu_items_legacy;
+
+      DROP TABLE menu_items_legacy;
+    `);
+    db.pragma('foreign_keys = ON');
+  }
+
   ensureColumn('menu_items', 'category', "TEXT NOT NULL DEFAULT 'food'");
+  ensureColumn('menu_items', 'description', "TEXT NOT NULL DEFAULT ''");
   ensureColumn('menu_items', 'image', "TEXT NOT NULL DEFAULT ''");
   ensureColumn('menu_items', 'available', 'INTEGER NOT NULL DEFAULT 1');
+  ensureColumn('menu_items', 'featured', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('menu_items', 'show_today_offer', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('menu_items', 'show_for_you', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('menu_items', 'sort_order', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn('menu_items', 'created_at', 'TEXT');
   ensureColumn('menu_items', 'updated_at', 'TEXT');
 
@@ -63,6 +196,23 @@ function createMenuItemsTable() {
         name IN ('Trà đào', 'trà đào', 'Tra dao', 'tra dao', 'Coca', 'coca', 'Pepsi', 'pepsi')
         OR lower(name) IN ('tra dao', 'coca', 'pepsi')
       );
+
+    UPDATE menu_items
+    SET description = CASE
+      WHEN lower(name) IN ('bún bò', 'bun bo') THEN 'Nước dùng đậm vị, bò mềm, rau thơm.'
+      WHEN lower(name) IN ('phở bò', 'pho bo') THEN 'Phở bò nóng với bánh phở mềm và nước dùng trong.'
+      WHEN lower(name) IN ('cơm tấm', 'com tam') THEN 'Cơm tấm sườn, đồ chua và nước mắm.'
+      WHEN lower(name) IN ('bánh mì', 'banh mi') THEN 'Bánh mì giòn, nhân đầy đặn.'
+      WHEN lower(name) IN ('trà đào', 'tra dao') THEN 'Trà đào mát, vị ngọt thanh.'
+      WHEN lower(name) IN ('coca', 'pepsi', 'sting') THEN 'Nước ngọt có gas.'
+      WHEN lower(name) IN ('trà đá', 'tra da') THEN 'Trà đá mát lạnh.'
+      ELSE description
+    END
+    WHERE COALESCE(description, '') = '';
+
+    UPDATE menu_items
+    SET sort_order = id
+    WHERE COALESCE(sort_order, 0) = 0;
   `);
 }
 
@@ -294,6 +444,7 @@ function runMigrations() {
   createTablesTable();
   createTableSessionsTable();
   createRestaurantInfoTable();
+  createMenuCategoriesTable();
   createMenuItemsTable();
   rebuildOrderTablesIfNeeded();
 
@@ -327,6 +478,12 @@ function runMigrations() {
 
     CREATE INDEX IF NOT EXISTS idx_order_items_order_id
       ON order_items(order_id);
+
+    CREATE INDEX IF NOT EXISTS idx_menu_categories_visible_sort
+      ON menu_categories(visible, sort_order);
+
+    CREATE INDEX IF NOT EXISTS idx_menu_items_category_sort
+      ON menu_items(category, sort_order);
   `);
 
   backfillOpenSessions();
