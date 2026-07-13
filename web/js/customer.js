@@ -28,6 +28,7 @@
   let orderedListOpen = false;
   let reviewPromptTimer = null;
   let sheetCloseTimer = null;
+  let orderedReviewRefreshTimer = null;
   let sheetTouchStartY = 0;
   let sheetTouchCurrentY = 0;
   const TODAY_OFFER_KEY = 'today-offer';
@@ -106,7 +107,11 @@
       return '';
     }
 
-    const normalized = value.includes('T') ? value : value.replace(' ', 'T');
+    const raw = String(value).trim();
+    const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw);
+    const normalized = raw.includes('T')
+      ? `${raw}${hasTimezone ? '' : 'Z'}`
+      : `${raw.replace(' ', 'T')}Z`;
     const date = new Date(normalized);
 
     if (Number.isNaN(date.getTime())) {
@@ -374,7 +379,11 @@
   function renderOrderedBill(bill) {
     orderedList.replaceChildren();
 
-    const orders = bill?.orders || [];
+    const orders = [...(bill?.orders || [])].sort((first, second) => {
+      const firstCreated = String(first.created_at || '');
+      const secondCreated = String(second.created_at || '');
+      return secondCreated.localeCompare(firstCreated) || second.id - first.id;
+    });
 
     if (orders.length === 0) {
       const empty = document.createElement('p');
@@ -464,6 +473,48 @@
     } finally {
       cartHistoryTab.disabled = false;
     }
+  }
+
+  function isCurrentTableEvent(payload) {
+    if (!currentTable) {
+      return false;
+    }
+
+    const eventTableId = Number(payload?.table_id || 0);
+    return !eventTableId || eventTableId === Number(currentTable.id);
+  }
+
+  function scheduleOrderedReviewRefresh(payload) {
+    if (!isCurrentTableEvent(payload)) {
+      return;
+    }
+
+    if (cartHistoryPanel.hidden && !orderedListOpen) {
+      return;
+    }
+
+    window.clearTimeout(orderedReviewRefreshTimer);
+    orderedReviewRefreshTimer = window.setTimeout(() => {
+      orderedReviewRefreshTimer = null;
+      loadOrderedReview();
+    }, 180);
+  }
+
+  function setupRealtime() {
+    if (!window.io) {
+      return;
+    }
+
+    const socket = window.io();
+
+    socket.on('connect', () => {
+      if (!cartHistoryPanel.hidden || orderedListOpen) {
+        loadOrderedReview();
+      }
+    });
+    socket.on('order:new', scheduleOrderedReviewRefresh);
+    socket.on('order:updated', scheduleOrderedReviewRefresh);
+    socket.on('order:status_changed', scheduleOrderedReviewRefresh);
   }
 
   async function cancelPendingOrder(order, button) {
@@ -937,4 +988,5 @@
 
   loadRestaurantInfo();
   initTable();
+  setupRealtime();
 })();

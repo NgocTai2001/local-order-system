@@ -21,8 +21,20 @@
   }
 
   function formatTime(value) {
-    const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
+    const raw = String(value || '').trim();
+    if (!raw) {
+      return '';
+    }
+
+    const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw);
+    const normalized = raw.includes('T')
+      ? `${raw}${hasTimezone ? '' : 'Z'}`
+      : `${raw.replace(' ', 'T')}Z`;
     const date = new Date(normalized);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
 
     return new Intl.DateTimeFormat('vi-VN', {
       hour: '2-digit',
@@ -194,6 +206,7 @@
   const socket = io();
   socket.on('connect', () => {
     setConnectionMessage('');
+    loadOrders();
   });
   socket.on('disconnect', () => {
     setConnectionMessage('Mất kết nối realtime');

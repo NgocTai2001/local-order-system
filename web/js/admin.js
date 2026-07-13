@@ -90,6 +90,7 @@
   let menu = [];
   let menuCategories = [];
   let tables = [];
+  let realtimeRefreshTimer = null;
   let restaurantInfo = {
     name: 'Pho Viet',
     address: '',
@@ -1252,7 +1253,12 @@
       return '';
     }
 
-    const date = new Date(value.replace(' ', 'T'));
+    const raw = String(value).trim();
+    const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw);
+    const normalized = raw.includes('T')
+      ? `${raw}${hasTimezone ? '' : 'Z'}`
+      : `${raw.replace(' ', 'T')}Z`;
+    const date = new Date(normalized);
     if (Number.isNaN(date.getTime())) {
       return value;
     }
@@ -1523,6 +1529,66 @@
     }
   }
 
+  function activeAdminTabId() {
+    return document.querySelector('.tab-button.is-active')?.dataset.tab || '';
+  }
+
+  function isTableDetailOpen() {
+    return !tableDetailScreen.hidden;
+  }
+
+  function shouldRefreshSelectedBill(payload) {
+    if (!selectedLiveTableId) {
+      return false;
+    }
+
+    const eventTableId = Number(payload?.table_id || 0);
+    return !eventTableId || eventTableId === Number(selectedLiveTableId);
+  }
+
+  function scheduleRealtimeRefresh(payload) {
+    window.clearTimeout(realtimeRefreshTimer);
+    realtimeRefreshTimer = window.setTimeout(async () => {
+      realtimeRefreshTimer = null;
+
+      try {
+        const activeTab = activeAdminTabId();
+
+        if (activeTab === 'tablesTab') {
+          await loadTables();
+          return;
+        }
+
+        if (activeTab !== 'liveTablesTab' && !isTableDetailOpen()) {
+          return;
+        }
+
+        await loadLiveTables();
+
+        if (isTableDetailOpen() && shouldRefreshSelectedBill(payload)) {
+          await loadSelectedBill();
+        }
+      } catch (error) {
+        setBillMessage(error.message || 'Không cập nhật realtime được.', true);
+      }
+    }, 180);
+  }
+
+  function setupRealtime() {
+    if (!window.io) {
+      return;
+    }
+
+    const socket = window.io();
+
+    socket.on('connect', () => {
+      scheduleRealtimeRefresh();
+    });
+    socket.on('order:new', scheduleRealtimeRefresh);
+    socket.on('order:updated', scheduleRealtimeRefresh);
+    socket.on('order:status_changed', scheduleRealtimeRefresh);
+  }
+
   async function closeSelectedSession() {
     const table = tables.find((item) => item.id === selectedLiveTableId);
 
@@ -1678,4 +1744,5 @@
   loadLiveTables();
   loadCategories();
   loadMenu();
+  setupRealtime();
 })();
