@@ -48,6 +48,16 @@ function toInteger(value, label, fallback = 0) {
   return number;
 }
 
+function normalizeId(value, label = 'ID') {
+  const id = Number(value);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    throw httpError(400, `${label} không hợp lệ.`);
+  }
+
+  return id;
+}
+
 function getCategoryByKey(key) {
   return db.prepare(`
     SELECT id, key, name, icon, color, visible, is_system, card_layout, sort_order
@@ -145,8 +155,103 @@ function serializeMenuItem(item) {
     featured: Boolean(item.featured),
     show_today_offer: Boolean(item.show_today_offer),
     show_for_you: Boolean(item.show_for_you),
-    sort_order: item.sort_order || 0
+    sort_order: item.sort_order || 0,
+    option_groups: item.option_groups || []
   };
+}
+
+function serializeOptionValue(value) {
+  return {
+    id: value.id,
+    name: value.name,
+    price_adjustment: value.price_adjustment || 0,
+    is_default: Boolean(value.is_default),
+    sort_order: value.sort_order || 0
+  };
+}
+
+function serializeAssignedOptionGroup(group) {
+  return {
+    id: group.id,
+    option_group_id: group.id,
+    name: group.name,
+    description: group.description || '',
+    selection_type: group.selection_type === 'multiple' ? 'multiple' : 'single',
+    is_required: Boolean(group.is_required),
+    min_select: group.min_select || 0,
+    max_select: group.max_select || 0,
+    sort_order: group.assignment_sort_order || group.sort_order || 0,
+    is_active: Boolean(group.is_active),
+    values: (group.values || []).map(serializeOptionValue)
+  };
+}
+
+function optionGroupsForMenuItems(menuItemIds, { includeInactive = false } = {}) {
+  if (!menuItemIds.length) {
+    return new Map();
+  }
+
+  const placeholders = menuItemIds.map(() => '?').join(', ');
+  const groups = db.prepare(`
+    SELECT
+      miog.menu_item_id,
+      miog.sort_order AS assignment_sort_order,
+      og.id,
+      og.name,
+      og.description,
+      og.selection_type,
+      og.is_required,
+      og.min_select,
+      og.max_select,
+      og.sort_order,
+      og.is_active
+    FROM menu_item_option_groups miog
+    JOIN option_groups og ON og.id = miog.option_group_id
+    WHERE miog.menu_item_id IN (${placeholders})
+      ${includeInactive ? '' : 'AND og.is_active = 1'}
+    ORDER BY miog.menu_item_id ASC, miog.sort_order ASC, og.sort_order ASC, og.id ASC
+  `).all(...menuItemIds);
+  const groupIds = [...new Set(groups.map((group) => group.id))];
+  const valuesByGroup = new Map();
+
+  if (groupIds.length) {
+    const valuePlaceholders = groupIds.map(() => '?').join(', ');
+    const values = db.prepare(`
+      SELECT id, option_group_id, name, price_adjustment, is_default, sort_order, is_active
+      FROM option_values
+      WHERE option_group_id IN (${valuePlaceholders})
+        ${includeInactive ? '' : 'AND is_active = 1'}
+      ORDER BY sort_order ASC, id ASC
+    `).all(...groupIds);
+
+    for (const value of values) {
+      if (!valuesByGroup.has(value.option_group_id)) {
+        valuesByGroup.set(value.option_group_id, []);
+      }
+      valuesByGroup.get(value.option_group_id).push(value);
+    }
+  }
+
+  const output = new Map();
+  for (const group of groups) {
+    if (!output.has(group.menu_item_id)) {
+      output.set(group.menu_item_id, []);
+    }
+    output.get(group.menu_item_id).push(serializeAssignedOptionGroup({
+      ...group,
+      values: valuesByGroup.get(group.id) || []
+    }));
+  }
+
+  return output;
+}
+
+function attachOptionGroups(items, { includeInactive = false } = {}) {
+  const optionGroupsByItem = optionGroupsForMenuItems(items.map((item) => item.id), { includeInactive });
+  return items.map((item) => ({
+    ...item,
+    option_groups: optionGroupsByItem.get(item.id) || []
+  }));
 }
 
 function serializeCategory(category) {
@@ -198,10 +303,11 @@ function listMenuItems({ includeUnavailable = false } = {}) {
       mi.id ASC
   `;
 
-  return db.prepare(sql).all().map(serializeMenuItem);
+  const items = db.prepare(sql).all().map(serializeMenuItem);
+  return attachOptionGroups(items, { includeInactive: includeUnavailable });
 }
 
-function getMenuItem(id) {
+function getMenuItem(id, { includeInactiveOptions = true } = {}) {
   const item = db.prepare(`
     SELECT
       mi.id,
@@ -227,63 +333,146 @@ function getMenuItem(id) {
     throw httpError(404, 'Không tìm thấy món.');
   }
 
-  return serializeMenuItem(item);
+  const [output] = attachOptionGroups([serializeMenuItem(item)], {
+    includeInactive: includeInactiveOptions
+  });
+  return output;
+}
+
+function normalizeOptionAssignments(input) {
+  const source = input.option_groups ?? input.option_group_ids;
+
+  if (source === undefined) {
+    return null;
+  }
+
+  if (!Array.isArray(source)) {
+    throw httpError(400, 'Danh sách bộ tùy chọn không hợp lệ.');
+  }
+
+  const seen = new Set();
+  return source.map((entry, index) => {
+    const optionGroupId = typeof entry === 'object'
+      ? normalizeId(entry.option_group_id ?? entry.id, 'Bộ tùy chọn')
+      : normalizeId(entry, 'Bộ tùy chọn');
+
+    if (seen.has(optionGroupId)) {
+      throw httpError(400, 'Một bộ tùy chọn không thể gán hai lần cho cùng món.');
+    }
+    seen.add(optionGroupId);
+
+    return {
+      option_group_id: optionGroupId,
+      sort_order: typeof entry === 'object'
+        ? toInteger(entry.sort_order, 'Thứ tự bộ tùy chọn', index + 1)
+        : index + 1
+    };
+  });
+}
+
+function syncMenuItemOptionGroups(menuItemId, assignments) {
+  if (assignments === null) {
+    return;
+  }
+
+  const deleteExisting = db.prepare('DELETE FROM menu_item_option_groups WHERE menu_item_id = ?');
+  const insertAssignment = db.prepare(`
+    INSERT INTO menu_item_option_groups (menu_item_id, option_group_id, sort_order)
+    VALUES (@menu_item_id, @option_group_id, @sort_order)
+  `);
+  const existingGroups = assignments.length
+    ? db.prepare(`
+      SELECT id
+      FROM option_groups
+      WHERE id IN (${assignments.map(() => '?').join(', ')})
+    `).all(...assignments.map((assignment) => assignment.option_group_id))
+    : [];
+  const existingIds = new Set(existingGroups.map((group) => group.id));
+
+  for (const assignment of assignments) {
+    if (!existingIds.has(assignment.option_group_id)) {
+      throw httpError(400, 'Bộ tùy chọn không tồn tại.');
+    }
+  }
+
+  deleteExisting.run(menuItemId);
+  for (const assignment of assignments) {
+    insertAssignment.run({
+      menu_item_id: menuItemId,
+      option_group_id: assignment.option_group_id,
+      sort_order: assignment.sort_order
+    });
+  }
 }
 
 function createMenuItem(input) {
   const data = normalizeMenuInput(input);
+  const optionAssignments = normalizeOptionAssignments(input) || [];
 
-  const result = db.prepare(`
-    INSERT INTO menu_items (
-      name,
-      category,
-      description,
-      price,
-      image,
-      available,
-      featured,
-      show_today_offer,
-      show_for_you,
-      sort_order,
-      updated_at
-    )
-    VALUES (
-      @name,
-      @category,
-      @description,
-      @price,
-      @image,
-      @available,
-      @featured,
-      @show_today_offer,
-      @show_for_you,
-      @sort_order,
-      datetime('now')
-    )
-  `).run(data);
+  const transaction = db.transaction(() => {
+    const result = db.prepare(`
+      INSERT INTO menu_items (
+        name,
+        category,
+        description,
+        price,
+        image,
+        available,
+        featured,
+        show_today_offer,
+        show_for_you,
+        sort_order,
+        updated_at
+      )
+      VALUES (
+        @name,
+        @category,
+        @description,
+        @price,
+        @image,
+        @available,
+        @featured,
+        @show_today_offer,
+        @show_for_you,
+        @sort_order,
+        datetime('now')
+      )
+    `).run(data);
 
-  return getMenuItem(result.lastInsertRowid);
+    syncMenuItemOptionGroups(result.lastInsertRowid, optionAssignments);
+    return result.lastInsertRowid;
+  });
+
+  return getMenuItem(transaction());
 }
 
 function updateMenuItem(id, input) {
   getMenuItem(id);
 
   const data = normalizeMenuInput(input, { partial: true });
+  const optionAssignments = normalizeOptionAssignments(input);
   const fields = Object.keys(data);
 
-  if (fields.length === 0) {
+  if (fields.length === 0 && optionAssignments === null) {
     throw httpError(400, 'Không có dữ liệu để cập nhật.');
   }
 
-  const assignments = fields.map((field) => `${field} = @${field}`).join(', ');
+  const transaction = db.transaction(() => {
+    if (fields.length > 0) {
+      const assignments = fields.map((field) => `${field} = @${field}`).join(', ');
 
-  db.prepare(`
-    UPDATE menu_items
-    SET ${assignments},
-        updated_at = datetime('now')
-    WHERE id = @id
-  `).run({ ...data, id });
+      db.prepare(`
+        UPDATE menu_items
+        SET ${assignments},
+            updated_at = datetime('now')
+        WHERE id = @id
+      `).run({ ...data, id });
+    }
 
+    syncMenuItemOptionGroups(id, optionAssignments);
+  });
+
+  transaction();
   return getMenuItem(id);
 }
 
@@ -430,6 +619,7 @@ module.exports = {
   createMenuItem,
   deleteMenuCategory,
   deleteMenuItem,
+  getMenuItem,
   listMenuCategories,
   listMenuItems,
   updateMenuCategory,

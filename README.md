@@ -71,14 +71,27 @@ Các bảng chính:
 - `tables`: tên bàn, token QR riêng, trạng thái bàn.
 - `table_sessions`: bill/phiên bàn hiện tại, trạng thái `open` hoặc `closed`.
 - `restaurant_info`: tên quán, địa chỉ, số điện thoại, nhân viên thu ngân dùng cho giao diện và bill.
-- `menu_items`: món, loại `food`/`drink`, giá, ảnh URL, trạng thái đang bán.
+- `menu_items`: món, danh mục, giá, ảnh, trạng thái đang bán.
+- `option_groups`: nhóm tùy chọn động như Size, Đường, Đá, Topping.
+- `option_values`: các lựa chọn trong từng nhóm, có thể cộng thêm tiền.
+- `menu_item_option_groups`: gắn nhóm tùy chọn vào từng món.
 - `orders`: đơn hàng theo `table_id`, thuộc một `table_session` khi bàn đang mở bill.
-- `order_items`: món trong đơn, lưu snapshot tên/giá tại thời điểm đặt.
+- `order_items`: món trong đơn, lưu snapshot tên/giá/ghi chú tại thời điểm đặt.
+- `order_item_options`: snapshot tùy chọn đã chọn để bill/bếp không bị thay đổi khi Admin sửa cấu hình sau này.
 
 Seed lần đầu:
 
 - 10 bàn: `Bàn 01` đến `Bàn 10`, mỗi bàn có token random riêng.
 - 7 món mẫu: Bún bò, Phở bò, Cơm tấm, Bánh mì thuộc `food`; Trà đào, Coca, Pepsi thuộc `drink`.
+- 4 bộ tùy chọn mẫu: Size, Đường, Đá, Topping. Admin có thể sửa/xóa nếu chưa phát sinh order dùng tùy chọn đó.
+
+## Tùy chọn món ăn
+
+Admin vào tab `Menu` để quản lý bộ tùy chọn và gắn vào món. Mỗi bộ tùy chọn có thể chọn 1 hoặc chọn nhiều, có số lượng tối thiểu/tối đa, giá cộng thêm và trạng thái hiển thị.
+
+Khi khách bấm món có tùy chọn, trang order mở popup để chọn option và ghi chú. Giỏ hàng sẽ tách dòng theo `món + tùy chọn + ghi chú`, ví dụ `Trà đào - Size L - Ít đá` là một dòng riêng với `Trà đào - Size M`.
+
+Bếp, lịch sử món đã đặt và bill Admin đều hiển thị snapshot tùy chọn/ghi chú đúng tại thời điểm khách đặt.
 
 ## QR bàn
 
@@ -138,6 +151,15 @@ PUT    /api/menu/:id
 PATCH  /api/menu/:id
 DELETE /api/menu/:id
 
+GET    /api/admin/option-groups
+POST   /api/admin/option-groups
+GET    /api/admin/option-groups/:id
+PUT    /api/admin/option-groups/:id
+PATCH  /api/admin/option-groups/:id
+DELETE /api/admin/option-groups/:id
+GET    /api/admin/menu/:id/options
+PUT    /api/admin/menu/:id/options
+
 GET    /api/restaurant
 GET    /api/admin/restaurant
 PATCH  /api/admin/restaurant
@@ -196,11 +218,18 @@ curl -X POST http://localhost:8080/api/orders \
   -d '{
     "table_id": 1,
     "items": [
-      { "menu_item_id": 1, "quantity": 2 },
+      {
+        "menu_item_id": 1,
+        "quantity": 2,
+        "selected_option_value_ids": [1, 5],
+        "customer_note": "Ít hành"
+      },
       { "menu_item_id": 5, "quantity": 1 }
     ]
   }'
 ```
+
+API luôn tự kiểm tra option theo cấu hình hiện tại trong database và tự tính giá. Client chỉ gửi `selected_option_value_ids`, không gửi giá option.
 
 Ví dụ cập nhật trạng thái:
 

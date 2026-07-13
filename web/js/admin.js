@@ -23,6 +23,7 @@
   const itemTodayOffer = document.getElementById('itemTodayOffer');
   const itemForYou = document.getElementById('itemForYou');
   const itemSortOrder = document.getElementById('itemSortOrder');
+  const itemOptionGroups = document.getElementById('itemOptionGroups');
   const adminMenuBody = document.getElementById('adminMenuBody');
   const adminCount = document.getElementById('adminCount');
   const adminMessage = document.getElementById('adminMessage');
@@ -48,6 +49,25 @@
   const closeCategoryModal = document.getElementById('closeCategoryModal');
   const categoryFormTitle = document.getElementById('categoryFormTitle');
   const categoryFormMode = document.getElementById('categoryFormMode');
+  const optionGroupForm = document.getElementById('optionGroupForm');
+  const optionGroupId = document.getElementById('optionGroupId');
+  const optionGroupName = document.getElementById('optionGroupName');
+  const optionGroupDescription = document.getElementById('optionGroupDescription');
+  const optionGroupSelectionType = document.getElementById('optionGroupSelectionType');
+  const optionGroupRequired = document.getElementById('optionGroupRequired');
+  const optionGroupMin = document.getElementById('optionGroupMin');
+  const optionGroupMax = document.getElementById('optionGroupMax');
+  const optionGroupSortOrder = document.getElementById('optionGroupSortOrder');
+  const optionGroupActive = document.getElementById('optionGroupActive');
+  const optionValuesList = document.getElementById('optionValuesList');
+  const optionGroupBody = document.getElementById('optionGroupBody');
+  const optionGroupCount = document.getElementById('optionGroupCount');
+  const optionGroupMessage = document.getElementById('optionGroupMessage');
+  const optionGroupModal = document.getElementById('optionGroupModal');
+  const newOptionGroupButton = document.getElementById('newOptionGroupButton');
+  const closeOptionGroupModal = document.getElementById('closeOptionGroupModal');
+  const optionGroupFormTitle = document.getElementById('optionGroupFormTitle');
+  const optionGroupFormMode = document.getElementById('optionGroupFormMode');
 
   const tableForm = document.getElementById('tableForm');
   const tableId = document.getElementById('tableId');
@@ -66,6 +86,7 @@
   const adminTabs = document.getElementById('adminTabs');
   const tableDetailScreen = document.getElementById('tableDetailScreen');
   const backToTablesButton = document.getElementById('backToTablesButton');
+  const quickOrderLink = document.getElementById('quickOrderLink');
   const liveTablesGrid = document.getElementById('liveTablesGrid');
   const liveTableCount = document.getElementById('liveTableCount');
   const billTitle = document.getElementById('billTitle');
@@ -89,6 +110,7 @@
 
   let menu = [];
   let menuCategories = [];
+  let optionGroups = [];
   let tables = [];
   let realtimeRefreshTimer = null;
   let restaurantInfo = {
@@ -131,6 +153,11 @@
     categoryMessage.style.color = isError ? '#a9371d' : '';
   }
 
+  function setOptionGroupMessage(text, isError) {
+    optionGroupMessage.textContent = text || '';
+    optionGroupMessage.style.color = isError ? '#a9371d' : '';
+  }
+
   function setTableMessage(text, isError) {
     tableMessage.textContent = text || '';
     tableMessage.style.color = isError ? '#a9371d' : '';
@@ -155,6 +182,7 @@
   function closeAdminModals() {
     menuItemModal.hidden = true;
     categoryModal.hidden = true;
+    optionGroupModal.hidden = true;
     adminModalBackdrop.hidden = true;
     closeDisplayOptionMenu();
     document.body.classList.remove('sheet-open');
@@ -170,6 +198,12 @@
     resetCategoryForm();
     openAdminModal(categoryModal);
     categoryName.focus();
+  }
+
+  function openOptionGroupModal() {
+    resetOptionGroupForm();
+    openAdminModal(optionGroupModal);
+    optionGroupName.focus();
   }
 
   function restaurantPayloadFromForm() {
@@ -464,6 +498,275 @@
     }
   }
 
+  function formatAdjustment(value) {
+    const amount = Number(value || 0);
+    return amount === 0 ? 'Miễn phí' : `+${api.formatCurrency(amount)}`;
+  }
+
+  function renderItemOptionChoices(selectedGroups = []) {
+    itemOptionGroups.replaceChildren();
+
+    const selectedById = new Map((selectedGroups || []).map((group, index) => [
+      Number(group.id || group.option_group_id),
+      group.sort_order || index + 1
+    ]));
+    const activeGroups = optionGroups.filter((group) => group.is_active);
+
+    if (activeGroups.length === 0) {
+      itemOptionGroups.innerHTML = '<p class="empty-state compact-empty">Chưa có bộ tùy chọn nào. Hãy tạo ở phần Bộ tùy chọn.</p>';
+      return;
+    }
+
+    activeGroups.forEach((group, index) => {
+      const row = document.createElement('label');
+      row.className = 'item-option-choice';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = group.id;
+      checkbox.checked = selectedById.has(group.id);
+      const name = document.createElement('span');
+      name.textContent = group.name;
+      const sort = document.createElement('input');
+      sort.type = 'number';
+      sort.step = '1';
+      sort.value = selectedById.get(group.id) || index + 1;
+      sort.setAttribute('aria-label', `Thứ tự ${group.name}`);
+      row.append(checkbox, name, sort);
+      itemOptionGroups.append(row);
+    });
+  }
+
+  function selectedItemOptionGroups() {
+    return Array.from(itemOptionGroups.querySelectorAll('.item-option-choice'))
+      .map((row, index) => {
+        const checkbox = row.querySelector('input[type="checkbox"]');
+        const sort = row.querySelector('input[type="number"]');
+
+        if (!checkbox.checked) {
+          return null;
+        }
+
+        return {
+          option_group_id: Number(checkbox.value),
+          sort_order: Number(sort.value || index + 1)
+        };
+      })
+      .filter(Boolean)
+      .sort((first, second) => first.sort_order - second.sort_order || first.option_group_id - second.option_group_id);
+  }
+
+  function addOptionValueRow(value = {}) {
+    const row = document.createElement('div');
+    row.className = 'option-value-row';
+    row.dataset.id = value.id || '';
+    row.innerHTML = `
+      <span class="drag-handle" title="Sắp xếp">⋮⋮</span>
+      <input class="option-value-name" type="text" maxlength="80" placeholder="Tên giá trị" value="">
+      <input class="option-value-price" type="number" min="0" step="1000" placeholder="Giá cộng" value="0">
+      <label class="inline-check"><input class="option-value-default" type="checkbox"> Mặc định</label>
+      <label class="inline-check"><input class="option-value-active" type="checkbox" checked> Hiển thị</label>
+      <input class="option-value-sort" type="number" step="1" value="0" aria-label="Thứ tự giá trị">
+    `;
+    const remove = document.createElement('button');
+    remove.className = 'icon-action-button danger-icon-button option-value-remove';
+    remove.type = 'button';
+    remove.title = 'Xóa giá trị';
+    remove.setAttribute('aria-label', 'Xóa giá trị tùy chọn');
+    remove.append(iconSvg([
+      'M3 6h18',
+      'M8 6V4h8v2',
+      'M6 6l1 15h10l1-15',
+      'M10 11v6',
+      'M14 11v6'
+    ]));
+    row.append(remove);
+    row.querySelector('.option-value-name').value = value.name || '';
+    row.querySelector('.option-value-price').value = value.price_adjustment || 0;
+    row.querySelector('.option-value-default').checked = Boolean(value.is_default);
+    row.querySelector('.option-value-active').checked = value.is_active !== false;
+    row.querySelector('.option-value-sort').value = value.sort_order || optionValuesList.children.length + 1;
+    remove.addEventListener('click', () => {
+      row.remove();
+    });
+    optionValuesList.append(row);
+  }
+
+  function resetOptionGroupForm() {
+    optionGroupForm.reset();
+    optionGroupId.value = '';
+    optionGroupSelectionType.value = 'single';
+    optionGroupRequired.checked = false;
+    optionGroupMin.value = '0';
+    optionGroupMax.value = '1';
+    optionGroupSortOrder.value = optionGroups.length + 1;
+    optionGroupActive.checked = true;
+    optionValuesList.replaceChildren();
+    addOptionValueRow({ name: 'M', sort_order: 1, is_default: true });
+    optionGroupFormTitle.textContent = 'Thêm bộ tùy chọn';
+    optionGroupFormMode.textContent = 'Tạo bộ để gán cho nhiều món';
+    setOptionGroupMessage('');
+  }
+
+  function fillOptionGroupForm(group) {
+    optionGroupId.value = group.id;
+    optionGroupName.value = group.name;
+    optionGroupDescription.value = group.description || '';
+    optionGroupSelectionType.value = group.selection_type;
+    optionGroupRequired.checked = group.is_required;
+    optionGroupMin.value = group.min_select || 0;
+    optionGroupMax.value = group.max_select || 1;
+    optionGroupSortOrder.value = group.sort_order || 0;
+    optionGroupActive.checked = group.is_active;
+    optionValuesList.replaceChildren();
+    (group.values || []).forEach(addOptionValueRow);
+    if (optionValuesList.children.length === 0) {
+      addOptionValueRow();
+    }
+    optionGroupFormTitle.textContent = 'Sửa bộ tùy chọn';
+    optionGroupFormMode.textContent = `#${group.id}`;
+    setOptionGroupMessage('');
+    openAdminModal(optionGroupModal);
+    optionGroupName.focus();
+  }
+
+  function optionGroupPayloadFromForm() {
+    const values = Array.from(optionValuesList.querySelectorAll('.option-value-row')).map((row, index) => ({
+      id: row.dataset.id ? Number(row.dataset.id) : undefined,
+      name: row.querySelector('.option-value-name').value.trim(),
+      price_adjustment: Number(row.querySelector('.option-value-price').value || 0),
+      is_default: row.querySelector('.option-value-default').checked,
+      sort_order: Number(row.querySelector('.option-value-sort').value || index + 1),
+      is_active: row.querySelector('.option-value-active').checked
+    }));
+
+    return {
+      name: optionGroupName.value.trim(),
+      description: optionGroupDescription.value.trim(),
+      selection_type: optionGroupSelectionType.value,
+      is_required: optionGroupRequired.checked,
+      min_select: Number(optionGroupMin.value || 0),
+      max_select: Number(optionGroupMax.value || 1),
+      sort_order: Number(optionGroupSortOrder.value || 0),
+      is_active: optionGroupActive.checked,
+      values
+    };
+  }
+
+  function renderOptionGroups() {
+    optionGroupBody.replaceChildren();
+    optionGroupCount.textContent = `${optionGroups.length} bộ`;
+    renderItemOptionChoices();
+
+    if (optionGroups.length === 0) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 5;
+      cell.textContent = 'Chưa có bộ tùy chọn.';
+      row.append(cell);
+      optionGroupBody.append(row);
+      return;
+    }
+
+    for (const group of optionGroups) {
+      const row = document.createElement('tr');
+      const name = document.createElement('td');
+      const title = document.createElement('strong');
+      title.textContent = group.name;
+      const description = document.createElement('small');
+      description.className = 'muted-line';
+      description.textContent = group.description || `${group.values.length} giá trị`;
+      name.append(title, description);
+
+      const type = document.createElement('td');
+      type.textContent = group.selection_type === 'multiple' ? 'Chọn nhiều' : 'Chọn một';
+
+      const values = document.createElement('td');
+      values.textContent = group.values.slice(0, 3).map((value) => `${value.name} (${formatAdjustment(value.price_adjustment)})`).join(', ')
+        || 'Chưa có giá trị';
+
+      const status = document.createElement('td');
+      const pill = document.createElement('span');
+      pill.className = `status-pill${group.is_active ? '' : ' off'}`;
+      pill.textContent = group.is_active ? '✓ Hiển thị' : 'Đang ẩn';
+      status.append(pill);
+
+      const actions = document.createElement('td');
+      const actionRow = document.createElement('div');
+      actionRow.className = 'row-actions category-actions';
+      const edit = document.createElement('button');
+      edit.className = 'icon-action-button';
+      edit.type = 'button';
+      edit.title = 'Sửa bộ tùy chọn';
+      edit.append(iconSvg([
+        'M12 20h9',
+        'M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z'
+      ]));
+      edit.addEventListener('click', () => fillOptionGroupForm(group));
+      const remove = document.createElement('button');
+      remove.className = 'icon-action-button danger-icon-button';
+      remove.type = 'button';
+      remove.title = 'Xóa bộ tùy chọn';
+      remove.append(iconSvg([
+        'M3 6h18',
+        'M8 6V4h8v2',
+        'M6 6l1 15h10l1-15',
+        'M10 11v6',
+        'M14 11v6'
+      ]));
+      remove.addEventListener('click', () => deleteOptionGroup(group));
+      actionRow.append(edit, remove);
+      actions.append(actionRow);
+      row.append(name, type, values, status, actions);
+      optionGroupBody.append(row);
+    }
+  }
+
+  async function loadOptionGroups() {
+    optionGroupBody.innerHTML = '<tr><td colspan="5">Đang tải bộ tùy chọn...</td></tr>';
+
+    try {
+      optionGroups = await api.getOptionGroups();
+      renderOptionGroups();
+    } catch (error) {
+      optionGroupBody.innerHTML = `<tr><td colspan="5">${error.message}</td></tr>`;
+    }
+  }
+
+  async function saveOptionGroup(event) {
+    event.preventDefault();
+    setOptionGroupMessage('Đang lưu bộ tùy chọn...');
+
+    try {
+      if (optionGroupId.value) {
+        await api.updateOptionGroup(optionGroupId.value, optionGroupPayloadFromForm());
+      } else {
+        await api.createOptionGroup(optionGroupPayloadFromForm());
+      }
+
+      await loadOptionGroups();
+      await loadMenu();
+      closeAdminModals();
+    } catch (error) {
+      setOptionGroupMessage(error.message, true);
+    }
+  }
+
+  async function deleteOptionGroup(group) {
+    const ok = window.confirm(`Xóa bộ tùy chọn "${group.name}"?`);
+    if (!ok) {
+      return;
+    }
+
+    try {
+      await api.deleteOptionGroup(group.id);
+      await loadOptionGroups();
+      await loadMenu();
+    } catch (error) {
+      setOptionGroupMessage(error.message, true);
+      fillOptionGroupForm(group);
+    }
+  }
+
   async function saveRestaurantInfo(event) {
     event.preventDefault();
     setRestaurantMessage('Đang lưu...');
@@ -541,6 +844,7 @@
     itemForYou.checked = false;
     updateDisplayOptionSummary();
     updateMenuCounters();
+    renderItemOptionChoices();
     itemSortOrder.value = '0';
     formTitle.textContent = 'Thêm món mới';
     formMode.textContent = 'Tạo món để hiển thị trên trang order';
@@ -562,6 +866,7 @@
     itemForYou.checked = item.show_for_you;
     updateDisplayOptionSummary();
     updateMenuCounters();
+    renderItemOptionChoices(item.option_groups || []);
     itemSortOrder.value = item.sort_order || 0;
     formTitle.textContent = 'Sửa món';
     formMode.textContent = `#${item.id}`;
@@ -581,7 +886,8 @@
       featured: itemFeatured.checked,
       show_today_offer: itemTodayOffer.checked,
       show_for_you: itemForYou.checked,
-      sort_order: Number(itemSortOrder.value || 0)
+      sort_order: Number(itemSortOrder.value || 0),
+      option_groups: selectedItemOptionGroups()
     };
   }
 
@@ -655,7 +961,7 @@
     if (menu.length === 0) {
       const row = document.createElement('tr');
       const cell = document.createElement('td');
-      cell.colSpan = 8;
+      cell.colSpan = 9;
       cell.textContent = 'Menu đang trống.';
       row.append(cell);
       adminMenuBody.append(row);
@@ -692,6 +998,12 @@
       const featured = document.createElement('td');
       featured.textContent = item.featured ? 'Có' : '-';
 
+      const options = document.createElement('td');
+      const assignedOptions = item.option_groups || [];
+      options.textContent = assignedOptions.length
+        ? assignedOptions.map((group) => group.name).join(', ')
+        : 'Không có';
+
       const status = document.createElement('td');
       const pill = document.createElement('span');
       pill.className = `status-pill${item.available ? '' : ' off'}`;
@@ -706,26 +1018,39 @@
       actionRow.className = 'row-actions';
 
       const edit = document.createElement('button');
-      edit.className = 'ghost-button';
+      edit.className = 'icon-action-button';
       edit.type = 'button';
-      edit.textContent = 'Sửa';
+      edit.title = 'Sửa món';
+      edit.setAttribute('aria-label', `Sửa ${item.name}`);
+      edit.append(iconSvg([
+        'M12 20h9',
+        'M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z'
+      ]));
       edit.addEventListener('click', () => fillForm(item));
 
       const remove = document.createElement('button');
-      remove.className = 'danger-button';
+      remove.className = 'icon-action-button danger-icon-button';
       remove.type = 'button';
-      remove.textContent = 'Xoá';
+      remove.title = 'Xoá món';
+      remove.setAttribute('aria-label', `Xoá ${item.name}`);
+      remove.append(iconSvg([
+        'M3 6h18',
+        'M8 6V4h8v2',
+        'M6 6l1 15h10l1-15',
+        'M10 11v6',
+        'M14 11v6'
+      ]));
       remove.addEventListener('click', () => deleteItem(item));
 
       actionRow.append(edit, remove);
       actions.append(actionRow);
-      row.append(name, category, price, special, featured, status, sort, actions);
+      row.append(name, category, price, special, featured, options, status, sort, actions);
       adminMenuBody.append(row);
     }
   }
 
   async function loadMenu() {
-    adminMenuBody.innerHTML = '<tr><td colspan="8">Đang tải menu...</td></tr>';
+    adminMenuBody.innerHTML = '<tr><td colspan="9">Đang tải menu...</td></tr>';
     try {
       menu = await api.getMenu(true);
       renderMenu();
@@ -733,7 +1058,7 @@
       adminMenuBody.innerHTML = '';
       const row = document.createElement('tr');
       const cell = document.createElement('td');
-      cell.colSpan = 8;
+      cell.colSpan = 9;
       cell.textContent = error.message;
       row.append(cell);
       adminMenuBody.append(row);
@@ -1181,9 +1506,17 @@
       downloadOrder.addEventListener('click', () => downloadQr(table, 'order'));
 
       const remove = document.createElement('button');
-      remove.className = 'danger-button';
+      remove.className = 'icon-action-button danger-icon-button';
       remove.type = 'button';
-      remove.textContent = 'Xoá';
+      remove.title = 'Xoá bàn';
+      remove.setAttribute('aria-label', `Xoá ${table.name}`);
+      remove.append(iconSvg([
+        'M3 6h18',
+        'M8 6V4h8v2',
+        'M6 6l1 15h10l1-15',
+        'M10 11v6',
+        'M14 11v6'
+      ]));
       remove.addEventListener('click', () => deleteTable(table));
 
       actionRow.append(downloadOrder, remove);
@@ -1299,6 +1632,33 @@
     return pill;
   }
 
+  function orderUrlForTable(table) {
+    if (table?.url) {
+      return table.url;
+    }
+
+    if (table?.token) {
+      return `/t/${encodeURIComponent(table.token)}`;
+    }
+
+    return '';
+  }
+
+  function updateQuickOrderLink(table) {
+    const url = orderUrlForTable(table);
+
+    if (!url) {
+      quickOrderLink.hidden = true;
+      quickOrderLink.removeAttribute('href');
+      return;
+    }
+
+    quickOrderLink.href = url;
+    quickOrderLink.hidden = false;
+    quickOrderLink.title = `Gọi món cho ${table.name}`;
+    quickOrderLink.setAttribute('aria-label', `Gọi món cho ${table.name}`);
+  }
+
   function renderBillPrintInfo(info, bill) {
     const source = info || restaurantInfo;
     billPrintInfo.replaceChildren();
@@ -1327,6 +1687,7 @@
   function resetBillPanel() {
     billTitle.textContent = 'Chọn bàn';
     billMeta.textContent = 'Xem các món đã gọi trong bill hiện tại';
+    updateQuickOrderLink(null);
     closeSessionButton.disabled = true;
     closeSessionButton.textContent = 'Thanh toán';
     renderBillPrintInfo(restaurantInfo);
@@ -1377,7 +1738,7 @@
     for (const order of orders) {
       const card = document.createElement('article');
       card.className = 'bill-order-card';
-      const canRemoveOrder = canCancelOrder;
+      const canRemoveOrder = canCancelOrder && order.status === 'pending';
 
       if (canRemoveOrder) {
         card.classList.add('has-delete');
@@ -1409,7 +1770,30 @@
         const quantity = document.createElement('b');
         quantity.textContent = item.quantity;
         const name = document.createElement('span');
-        name.textContent = item.name;
+        const itemName = document.createElement('strong');
+        itemName.textContent = item.name;
+        name.append(itemName);
+
+        if (item.base_price !== undefined) {
+          const base = document.createElement('small');
+          base.className = 'bill-option-line';
+          base.textContent = `Giá gốc: ${api.formatCurrency(item.base_price)} - Đơn giá: ${api.formatCurrency(item.unit_price || item.price || 0)}`;
+          name.append(base);
+        }
+
+        for (const option of item.options || []) {
+          const optionLine = document.createElement('small');
+          optionLine.className = 'bill-option-line';
+          optionLine.textContent = `${option.group_name}: ${option.value_name}${option.price_adjustment ? ` (+${api.formatCurrency(option.price_adjustment)})` : ''}`;
+          name.append(optionLine);
+        }
+
+        if (item.customer_note) {
+          const note = document.createElement('small');
+          note.className = 'bill-option-line';
+          note.textContent = `Ghi chú: ${item.customer_note}`;
+          name.append(note);
+        }
         const total = document.createElement('small');
         total.textContent = api.formatCurrency(item.subtotal);
         row.append(quantity, name, total);
@@ -1485,6 +1869,7 @@
 
     billTitle.textContent = table.name;
     billMeta.textContent = 'Đang tải bill...';
+    updateQuickOrderLink(table);
     closeSessionButton.disabled = true;
     closeSessionButton.textContent = 'Thanh toán';
     setBillMessage('');
@@ -1681,6 +2066,7 @@
       loadLiveTables();
     } else if (tabId === 'menuTab') {
       loadCategories();
+      loadOptionGroups();
       loadMenu();
     } else if (tabId === 'restaurantTab') {
       loadRestaurantInfo();
@@ -1708,6 +2094,18 @@
   categoryForm.addEventListener('submit', saveCategory);
   document.getElementById('resetCategoryForm').addEventListener('click', resetCategoryForm);
   newCategoryButton.addEventListener('click', openCategoryModal);
+  optionGroupForm.addEventListener('submit', saveOptionGroup);
+  newOptionGroupButton.addEventListener('click', openOptionGroupModal);
+  closeOptionGroupModal.addEventListener('click', closeAdminModals);
+  document.getElementById('addOptionValue').addEventListener('click', () => addOptionValueRow());
+  optionGroupSelectionType.addEventListener('change', () => {
+    if (optionGroupSelectionType.value === 'single') {
+      optionGroupMax.value = '1';
+      if (Number(optionGroupMin.value || 0) > 1) {
+        optionGroupMin.value = '1';
+      }
+    }
+  });
   closeMenuItemModal.addEventListener('click', closeAdminModals);
   closeCategoryModal.addEventListener('click', closeAdminModals);
   adminModalBackdrop.addEventListener('click', closeAdminModals);
@@ -1743,6 +2141,7 @@
   loadRestaurantInfo();
   loadLiveTables();
   loadCategories();
+  loadOptionGroups();
   loadMenu();
   setupRealtime();
 })();

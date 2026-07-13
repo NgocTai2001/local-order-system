@@ -284,12 +284,98 @@ function createOrderItemsTable() {
       menu_item_id INTEGER,
       name_snapshot TEXT,
       price_snapshot INTEGER,
+      base_price_snapshot INTEGER NOT NULL DEFAULT 0,
+      options_total_snapshot INTEGER NOT NULL DEFAULT 0,
+      unit_price_snapshot INTEGER NOT NULL DEFAULT 0,
       quantity INTEGER NOT NULL CHECK (quantity > 0),
       subtotal INTEGER,
+      customer_note TEXT,
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
       FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE SET NULL
     );
   `);
+}
+
+function createOptionTables() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS option_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      selection_type TEXT NOT NULL DEFAULT 'single'
+        CHECK (selection_type IN ('single', 'multiple')),
+      is_required INTEGER NOT NULL DEFAULT 0 CHECK (is_required IN (0, 1)),
+      min_select INTEGER NOT NULL DEFAULT 0 CHECK (min_select >= 0),
+      max_select INTEGER NOT NULL DEFAULT 1 CHECK (max_select >= 0),
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS option_values (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      option_group_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      price_adjustment INTEGER NOT NULL DEFAULT 0,
+      is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (option_group_id) REFERENCES option_groups(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS menu_item_option_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      menu_item_id INTEGER NOT NULL,
+      option_group_id INTEGER NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE,
+      FOREIGN KEY (option_group_id) REFERENCES option_groups(id),
+      UNIQUE(menu_item_id, option_group_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS order_item_options (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_item_id INTEGER NOT NULL,
+      option_group_id INTEGER,
+      option_value_id INTEGER,
+      group_name_snapshot TEXT NOT NULL,
+      value_name_snapshot TEXT NOT NULL,
+      price_adjustment_snapshot INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE CASCADE
+    );
+  `);
+
+  ensureColumn('option_groups', 'description', 'TEXT');
+  ensureColumn('option_groups', 'selection_type', "TEXT NOT NULL DEFAULT 'single'");
+  ensureColumn('option_groups', 'is_required', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('option_groups', 'min_select', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('option_groups', 'max_select', 'INTEGER NOT NULL DEFAULT 1');
+  ensureColumn('option_groups', 'sort_order', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('option_groups', 'is_active', 'INTEGER NOT NULL DEFAULT 1');
+  ensureColumn('option_groups', 'created_at', 'TEXT');
+  ensureColumn('option_groups', 'updated_at', 'TEXT');
+
+  ensureColumn('option_values', 'price_adjustment', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('option_values', 'is_default', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('option_values', 'sort_order', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('option_values', 'is_active', 'INTEGER NOT NULL DEFAULT 1');
+  ensureColumn('option_values', 'created_at', 'TEXT');
+  ensureColumn('option_values', 'updated_at', 'TEXT');
+
+  ensureColumn('menu_item_option_groups', 'sort_order', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('menu_item_option_groups', 'created_at', 'TEXT');
+
+  ensureColumn('order_item_options', 'option_group_id', 'INTEGER');
+  ensureColumn('order_item_options', 'option_value_id', 'INTEGER');
+  ensureColumn('order_item_options', 'group_name_snapshot', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('order_item_options', 'value_name_snapshot', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('order_item_options', 'price_adjustment_snapshot', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('order_item_options', 'created_at', 'TEXT');
 }
 
 function ordersNeedRebuild() {
@@ -447,6 +533,7 @@ function runMigrations() {
   createMenuCategoriesTable();
   createMenuItemsTable();
   rebuildOrderTablesIfNeeded();
+  createOptionTables();
 
   ensureColumn('orders', 'session_id', 'INTEGER');
   ensureColumn('orders', 'table_id', 'INTEGER');
@@ -454,7 +541,23 @@ function runMigrations() {
   ensureColumn('orders', 'updated_at', 'TEXT');
   ensureColumn('order_items', 'name_snapshot', 'TEXT');
   ensureColumn('order_items', 'price_snapshot', 'INTEGER');
+  ensureColumn('order_items', 'base_price_snapshot', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('order_items', 'options_total_snapshot', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('order_items', 'unit_price_snapshot', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn('order_items', 'subtotal', 'INTEGER');
+  ensureColumn('order_items', 'customer_note', 'TEXT');
+
+  db.exec(`
+    UPDATE order_items
+    SET
+      base_price_snapshot = COALESCE(NULLIF(base_price_snapshot, 0), price_snapshot, 0),
+      unit_price_snapshot = COALESCE(NULLIF(unit_price_snapshot, 0), price_snapshot, base_price_snapshot, 0),
+      options_total_snapshot = COALESCE(options_total_snapshot, 0),
+      subtotal = COALESCE(subtotal, COALESCE(NULLIF(unit_price_snapshot, 0), price_snapshot, base_price_snapshot, 0) * quantity)
+    WHERE COALESCE(base_price_snapshot, 0) = 0
+       OR COALESCE(unit_price_snapshot, 0) = 0
+       OR subtotal IS NULL;
+  `);
 
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_tables_token
@@ -478,6 +581,18 @@ function runMigrations() {
 
     CREATE INDEX IF NOT EXISTS idx_order_items_order_id
       ON order_items(order_id);
+
+    CREATE INDEX IF NOT EXISTS idx_option_values_group_id
+      ON option_values(option_group_id);
+
+    CREATE INDEX IF NOT EXISTS idx_menu_item_option_groups_item_id
+      ON menu_item_option_groups(menu_item_id);
+
+    CREATE INDEX IF NOT EXISTS idx_menu_item_option_groups_group_id
+      ON menu_item_option_groups(option_group_id);
+
+    CREATE INDEX IF NOT EXISTS idx_order_item_options_item_id
+      ON order_item_options(order_item_id);
 
     CREATE INDEX IF NOT EXISTS idx_menu_categories_visible_sort
       ON menu_categories(visible, sort_order);

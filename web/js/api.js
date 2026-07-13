@@ -85,6 +85,32 @@
         method: 'DELETE'
       });
     },
+    getOptionGroups() {
+      return request('/api/admin/option-groups');
+    },
+    createOptionGroup(payload) {
+      return request('/api/admin/option-groups', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    },
+    updateOptionGroup(id, payload) {
+      return request(`/api/admin/option-groups/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+    },
+    deleteOptionGroup(id) {
+      return request(`/api/admin/option-groups/${id}`, {
+        method: 'DELETE'
+      });
+    },
+    updateMenuItemOptions(id, payload) {
+      return request(`/api/admin/menu/${id}/options`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+    },
     createMenuItem(payload) {
       return request('/api/menu', {
         method: 'POST',

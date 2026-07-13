@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pho Viet - Admin</title>
-    <link rel="stylesheet" href="/css/styles.css?v=55">
+    <link rel="stylesheet" href="/css/styles.css?v=62">
   </head>
   <body>
     <header class="app-header">
@@ -132,6 +132,12 @@
               </div>
               <input id="itemImage" name="image" type="hidden">
               <div class="menu-form-divider"></div>
+              <div class="form-section-group">
+                <h3>Tùy chọn của món</h3>
+                <p class="form-help">Chọn các bộ tùy chọn sẽ hiện khi khách bấm thêm món.</p>
+                <div class="item-option-groups" id="itemOptionGroups"></div>
+              </div>
+              <div class="menu-form-divider"></div>
               <div class="form-grid two status-grid">
                 <div class="form-section-group">
                   <h3>Hiển thị & trạng thái</h3>
@@ -188,6 +194,32 @@
               </div>
             </section>
 
+            <section class="table-panel option-panel" aria-labelledby="optionAdminTitle">
+              <div class="section-bar category-header">
+                <div>
+                  <h2 id="optionAdminTitle">Bộ tùy chọn</h2>
+                  <p id="optionGroupCount">0 bộ</p>
+                </div>
+                <button class="primary-button compact-button category-add-button" id="newOptionGroupButton" type="button">
+                  + Thêm bộ tùy chọn
+                </button>
+              </div>
+              <div class="table-wrap">
+                <table class="option-group-table">
+                  <thead>
+                    <tr>
+                      <th>Tên bộ</th>
+                      <th>Kiểu</th>
+                      <th>Giá trị</th>
+                      <th>Trạng thái</th>
+                      <th>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="optionGroupBody"></tbody>
+                </table>
+              </div>
+            </section>
+
             <section class="table-panel" aria-labelledby="menuAdminTitle">
               <div class="section-bar">
                 <div>
@@ -207,6 +239,7 @@
                       <th>Giá</th>
                       <th>Mục đặc biệt</th>
                       <th>Nổi bật</th>
+                      <th>Tùy chọn</th>
                       <th>Trạng thái</th>
                       <th>Thứ tự</th>
                       <th></th>
@@ -253,6 +286,67 @@
                 <button class="ghost-button compact-button category-reset-button" id="resetCategoryForm" type="button">Làm mới</button>
               </div>
               <p class="message category-message" id="categoryMessage" aria-live="polite"></p>
+            </form>
+          </section>
+
+          <section class="admin-modal option-modal" id="optionGroupModal" aria-labelledby="optionGroupFormTitle" role="dialog" aria-modal="true" hidden>
+            <div class="section-bar compact">
+              <div>
+                <h2 id="optionGroupFormTitle">Thêm bộ tùy chọn</h2>
+                <p id="optionGroupFormMode">Tạo bộ để gán cho nhiều món</p>
+              </div>
+              <button class="modal-close-button" id="closeOptionGroupModal" type="button" aria-label="Đóng">×</button>
+            </div>
+            <form id="optionGroupForm" class="menu-form option-group-form">
+              <input type="hidden" id="optionGroupId">
+              <div class="form-grid two">
+                <label class="form-field">
+                  Tên bộ
+                  <input id="optionGroupName" type="text" maxlength="80" placeholder="Size" required>
+                </label>
+                <label class="form-field">
+                  Kiểu chọn
+                  <select id="optionGroupSelectionType">
+                    <option value="single">Chọn một</option>
+                    <option value="multiple">Chọn nhiều</option>
+                  </select>
+                </label>
+              </div>
+              <label class="form-field">
+                Mô tả
+                <textarea id="optionGroupDescription" rows="2" maxlength="160" placeholder="Chọn kích thước, mức đường, topping..."></textarea>
+              </label>
+              <div class="form-grid four option-config-grid">
+                <label class="inline-check">
+                  <input id="optionGroupRequired" type="checkbox">
+                  Bắt buộc
+                </label>
+                <label class="form-field">
+                  Min
+                  <input id="optionGroupMin" type="number" min="0" step="1" value="0">
+                </label>
+                <label class="form-field">
+                  Max
+                  <input id="optionGroupMax" type="number" min="0" step="1" value="1">
+                </label>
+                <label class="form-field">
+                  Thứ tự
+                  <input id="optionGroupSortOrder" type="number" step="1" value="0">
+                </label>
+              </div>
+              <label class="inline-check">
+                <input id="optionGroupActive" type="checkbox" checked>
+                Hiển thị bộ tùy chọn
+              </label>
+              <div class="option-values-header">
+                <strong>Giá trị tùy chọn</strong>
+                <button class="ghost-button compact-button" id="addOptionValue" type="button">+ Thêm giá trị</button>
+              </div>
+              <div class="option-values-list" id="optionValuesList"></div>
+              <div class="form-actions menu-modal-actions">
+                <button class="primary-button" type="submit">Lưu bộ tùy chọn</button>
+              </div>
+              <p class="message category-message" id="optionGroupMessage" aria-live="polite"></p>
             </form>
           </section>
         </div>
@@ -353,6 +447,14 @@
                 </h2>
                 <p id="billMeta">Xem các món đã gọi trong bill hiện tại</p>
               </div>
+              <a class="quick-order-button" id="quickOrderLink" href="#" target="_blank" rel="noopener" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 5h2l2 11h9l2-7H8"></path>
+                  <circle cx="10" cy="20" r="1.5"></circle>
+                  <circle cx="17" cy="20" r="1.5"></circle>
+                </svg>
+                <span>Gọi món</span>
+              </a>
             </div>
             <div class="bill-content">
               <div class="bill-orders" id="billOrders">
@@ -429,7 +531,7 @@
     </main>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/api.js?v=6"></script>
-    <script src="/js/admin.js?v=34"></script>
+    <script src="/js/api.js?v=7"></script>
+    <script src="/js/admin.js?v=41"></script>
   </body>
 </html>

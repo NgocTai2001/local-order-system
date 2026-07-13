@@ -39,6 +39,20 @@ function updateMenuItem(req, res) {
   res.json(item);
 }
 
+function getMenuItemOptions(req, res) {
+  const id = normalizeId(req.params.id, 'Món');
+  const item = menuService.getMenuItem(id);
+  res.json(item.option_groups || []);
+}
+
+function updateMenuItemOptions(req, res) {
+  const id = normalizeId(req.params.id, 'Món');
+  const item = menuService.updateMenuItem(id, {
+    option_groups: req.body.option_groups || []
+  });
+  res.json(item.option_groups || []);
+}
+
 function deleteMenuItem(req, res) {
   const id = normalizeId(req.params.id, 'Món');
   menuService.deleteMenuItem(id);
@@ -52,6 +66,8 @@ module.exports = {
   deleteMenuItem,
   listMenuCategories,
   listMenu,
+  getMenuItemOptions,
   updateMenuCategory,
-  updateMenuItem
+  updateMenuItem,
+  updateMenuItemOptions
 };

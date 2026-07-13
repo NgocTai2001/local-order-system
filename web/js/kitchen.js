@@ -135,9 +135,25 @@
         const line = document.createElement('li');
         const quantity = document.createElement('b');
         quantity.textContent = item.quantity;
+        const info = document.createElement('span');
+        info.className = 'kitchen-item-info';
         const name = document.createElement('span');
         name.textContent = item.name;
-        line.append(quantity, name);
+        info.append(name);
+
+        for (const option of item.options || []) {
+          const optionLine = document.createElement('small');
+          optionLine.textContent = `${option.group_name}: ${option.value_name}`;
+          info.append(optionLine);
+        }
+
+        if (item.customer_note) {
+          const note = document.createElement('small');
+          note.textContent = `Ghi chú: ${item.customer_note}`;
+          info.append(note);
+        }
+
+        line.append(quantity, info);
         list.append(line);
       }
 

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pho Viet - Gọi món</title>
-    <link rel="stylesheet" href="/css/styles.css?v=55">
+    <link rel="stylesheet" href="/css/styles.css?v=62">
   </head>
   <body class="customer-page">
     <header class="app-header">
@@ -67,10 +67,17 @@
           <div class="ordered-list" id="orderedList" aria-live="polite" hidden></div>
         </section>
       </aside>
+
+      <div class="sheet-backdrop" id="optionBackdrop" hidden></div>
+      <aside class="option-sheet" id="optionSheet" role="dialog" aria-modal="true" aria-labelledby="optionSheetTitle" hidden>
+        <div class="cart-sheet-handle" aria-hidden="true"></div>
+        <button class="cart-sheet-close" id="optionSheetClose" type="button" aria-label="Đóng tùy chọn">×</button>
+        <div class="option-sheet-body" id="optionSheetBody"></div>
+      </aside>
     </main>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/api.js?v=6"></script>
-    <script src="/js/customer.js?v=28"></script>
+    <script src="/js/api.js?v=7"></script>
+    <script src="/js/customer.js?v=31"></script>
   </body>
 </html>
