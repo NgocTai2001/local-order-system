@@ -865,13 +865,7 @@
     const title = document.createElement('h2');
     title.id = 'optionSheetTitle';
     title.textContent = item.name;
-    const description = document.createElement('p');
-    description.className = 'menu-description';
-    description.textContent = item.description || 'Chọn tùy chọn cho món.';
-    const basePrice = document.createElement('strong');
-    basePrice.className = 'option-base-price';
-    basePrice.textContent = `Giá gốc: ${api.formatCurrency(item.price)}`;
-    optionSheetBody.append(title, description, basePrice);
+    optionSheetBody.append(title);
 
     for (const group of item.option_groups || []) {
       const section = document.createElement('section');
@@ -908,7 +902,7 @@
         const name = document.createElement('span');
         name.textContent = value.name;
         const price = document.createElement('small');
-        price.textContent = value.price_adjustment ? `+${api.formatCurrency(value.price_adjustment)}` : 'Miễn phí';
+        price.textContent = value.price_adjustment ? `+${api.formatCurrency(value.price_adjustment)}` : '';
         label.append(input, name, price);
         section.append(label);
       }
@@ -926,9 +920,11 @@
     quantity.className = 'option-quantity-row';
     quantity.innerHTML = `
       <span>Số lượng</span>
-      <button class="qty-button minus-button" type="button">-</button>
-      <strong id="optionDraftQuantity">${entry?.quantity || 1}</strong>
-      <button class="qty-button plus-button" type="button">+</button>
+      <div class="option-quantity-controls">
+        <button class="qty-button minus-button" type="button">-</button>
+        <strong id="optionDraftQuantity">${entry?.quantity || 1}</strong>
+        <button class="qty-button plus-button" type="button">+</button>
+      </div>
     `;
     quantity.querySelector('.minus-button').addEventListener('click', () => setOptionDraftQuantity(optionDraftQuantity() - 1));
     quantity.querySelector('.plus-button').addEventListener('click', () => setOptionDraftQuantity(optionDraftQuantity() + 1));

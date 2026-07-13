@@ -255,6 +255,12 @@ function createRestaurantInfoTable() {
       address TEXT NOT NULL DEFAULT '',
       phone TEXT NOT NULL DEFAULT '',
       cashier_name TEXT NOT NULL DEFAULT '',
+      logo_image TEXT NOT NULL DEFAULT '',
+      bank_name TEXT NOT NULL DEFAULT '',
+      bank_account_name TEXT NOT NULL DEFAULT '',
+      bank_account_number TEXT NOT NULL DEFAULT '',
+      bank_transfer_note TEXT NOT NULL DEFAULT '',
+      bank_qr_image TEXT NOT NULL DEFAULT '',
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
@@ -263,11 +269,30 @@ function createRestaurantInfoTable() {
   ensureColumn('restaurant_info', 'address', "TEXT NOT NULL DEFAULT ''");
   ensureColumn('restaurant_info', 'phone', "TEXT NOT NULL DEFAULT ''");
   ensureColumn('restaurant_info', 'cashier_name', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('restaurant_info', 'logo_image', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('restaurant_info', 'bank_name', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('restaurant_info', 'bank_account_name', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('restaurant_info', 'bank_account_number', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('restaurant_info', 'bank_transfer_note', "TEXT NOT NULL DEFAULT ''");
+  ensureColumn('restaurant_info', 'bank_qr_image', "TEXT NOT NULL DEFAULT ''");
   ensureColumn('restaurant_info', 'updated_at', 'TEXT');
 
   db.exec(`
-    INSERT INTO restaurant_info (id, name, address, phone, cashier_name, updated_at)
-    SELECT 1, 'Pho Viet', '', '', '', datetime('now')
+    INSERT INTO restaurant_info (
+      id,
+      name,
+      address,
+      phone,
+      cashier_name,
+      logo_image,
+      bank_name,
+      bank_account_name,
+      bank_account_number,
+      bank_transfer_note,
+      bank_qr_image,
+      updated_at
+    )
+    SELECT 1, 'Pho Viet', '', '', '', '', '', '', '', '', '', datetime('now')
     WHERE NOT EXISTS (
       SELECT 1
       FROM restaurant_info

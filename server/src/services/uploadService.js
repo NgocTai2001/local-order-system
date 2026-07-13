@@ -6,6 +6,7 @@ const { httpError } = require('../utils/httpError');
 
 const uploadRoot = process.env.UPLOAD_DIR || '/app/data/uploads';
 const menuUploadDir = path.join(uploadRoot, 'menu');
+const restaurantUploadDir = path.join(uploadRoot, 'restaurant');
 const maxImageBytes = 4 * 1024 * 1024;
 const allowedTypes = {
   'image/jpeg': 'jpg',
@@ -13,7 +14,7 @@ const allowedTypes = {
   'image/webp': 'webp'
 };
 
-function saveMenuImage(input) {
+function saveImage(input, uploadDir, publicPath, prefix) {
   const dataUrl = String(input.dataUrl || '');
   const match = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
 
@@ -29,18 +30,31 @@ function saveMenuImage(input) {
     throw httpError(400, 'Ảnh phải nhỏ hơn 4MB.');
   }
 
-  fs.mkdirSync(menuUploadDir, { recursive: true });
+  fs.mkdirSync(uploadDir, { recursive: true });
 
-  const fileName = `menu-${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${extension}`;
-  const filePath = path.join(menuUploadDir, fileName);
+  const fileName = `${prefix}-${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${extension}`;
+  const filePath = path.join(uploadDir, fileName);
   fs.writeFileSync(filePath, buffer);
 
   return {
-    url: `/uploads/menu/${fileName}`
+    url: `${publicPath}/${fileName}`
   };
+}
+
+function saveMenuImage(input) {
+  return saveImage(input, menuUploadDir, '/uploads/menu', 'menu');
+}
+
+function saveRestaurantImage(input) {
+  const kind = String(input.kind || 'restaurant')
+    .trim()
+    .replace(/[^a-z0-9-]/gi, '-')
+    .toLowerCase() || 'restaurant';
+  return saveImage(input, restaurantUploadDir, '/uploads/restaurant', kind);
 }
 
 module.exports = {
   saveMenuImage,
+  saveRestaurantImage,
   uploadRoot
 };

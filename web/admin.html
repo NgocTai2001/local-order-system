@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pho Viet - Admin</title>
-    <link rel="stylesheet" href="/css/styles.css?v=62">
+    <link rel="stylesheet" href="/css/styles.css?v=69">
   </head>
   <body>
     <header class="app-header">
@@ -472,6 +472,7 @@
                 </div>
                 <button class="danger-button bill-pay-button" id="closeSessionButton" type="button" disabled>Thanh toán</button>
                 <p class="message" id="billMessage" aria-live="polite"></p>
+                <div class="bill-payment-info" id="billPaymentInfo"></div>
               </div>
             </div>
           </section>
@@ -479,8 +480,8 @@
       </section>
 
       <section class="admin-tab-panel" id="restaurantTab" aria-labelledby="restaurantInfoTitle">
-        <div class="admin-shell">
-          <section class="editor-panel" aria-labelledby="restaurantInfoTitle">
+        <div class="restaurant-settings-layout">
+          <section class="editor-panel restaurant-info-panel" aria-labelledby="restaurantInfoTitle">
             <div class="section-bar compact">
               <div>
                 <h1 id="restaurantInfoTitle">Thông tin quán</h1>
@@ -489,28 +490,33 @@
             </div>
 
             <form id="restaurantForm" class="menu-form">
-              <label>
-                Tên quán
+              <label class="form-field icon-form-field">
+                <span class="field-icon" aria-hidden="true">⌂</span>
+                <span>Tên quán</span>
                 <input id="restaurantName" name="name" type="text" maxlength="80" required>
               </label>
-              <label>
-                Địa chỉ quán
+              <label class="form-field icon-form-field">
+                <span class="field-icon" aria-hidden="true">⌖</span>
+                <span>Địa chỉ quán</span>
                 <input id="restaurantAddress" name="address" type="text" maxlength="200">
               </label>
-              <label>
-                Số điện thoại quán
+              <label class="form-field icon-form-field">
+                <span class="field-icon" aria-hidden="true">☎</span>
+                <span>Số điện thoại quán</span>
                 <input id="restaurantPhone" name="phone" type="text" maxlength="30">
               </label>
-              <label>
-                Nhân viên thu ngân
+              <label class="form-field icon-form-field">
+                <span class="field-icon" aria-hidden="true">♙</span>
+                <span>Nhân viên thu ngân</span>
                 <input id="restaurantCashier" name="cashier_name" type="text" maxlength="80">
               </label>
+
               <button class="primary-button" type="submit">Lưu thông tin</button>
               <p class="message" id="restaurantMessage" aria-live="polite"></p>
             </form>
           </section>
 
-          <section class="table-panel" aria-labelledby="restaurantPreviewTitle">
+          <section class="table-panel restaurant-bill-preview-panel" aria-labelledby="restaurantPreviewTitle">
             <div class="section-bar">
               <div>
                 <h2 id="restaurantPreviewTitle">Thông tin in bill</h2>
@@ -518,10 +524,63 @@
               </div>
             </div>
             <div class="restaurant-preview">
-              <strong id="restaurantPreviewName">Pho Viet</strong>
-              <span id="restaurantPreviewAddress">Chưa có địa chỉ</span>
-              <span id="restaurantPreviewPhone">Chưa có số điện thoại</span>
-              <span id="restaurantPreviewCashier">Thu ngân: chưa nhập</span>
+              <div class="restaurant-preview-head">
+                <div class="restaurant-preview-brand">
+                  <span class="restaurant-preview-logo" id="restaurantPreviewLogo"></span>
+                  <input id="restaurantLogoImage" type="hidden">
+                  <label class="ghost-button compact-button restaurant-logo-change-button">
+                    <span>Thay đổi logo</span>
+                    <input id="restaurantLogoFile" type="file" accept="image/*">
+                  </label>
+                </div>
+                <div class="restaurant-preview-info">
+                  <strong id="restaurantPreviewName">Pho Viet</strong>
+                  <span id="restaurantPreviewAddress">Chưa có địa chỉ</span>
+                  <span id="restaurantPreviewPhone">Chưa có số điện thoại</span>
+                  <span id="restaurantPreviewCashier">Thu ngân: chưa nhập</span>
+                </div>
+              </div>
+
+              <div class="restaurant-bank-preview">
+                <div>
+                  <h3>QR ngân hàng</h3>
+                  <p>Hiển thị trên bill để khách hàng quét thanh toán</p>
+                </div>
+                <div class="restaurant-bank-preview-grid">
+                  <div class="restaurant-qr-editor">
+                    <input id="restaurantBankQrImage" type="hidden">
+                    <label class="restaurant-qr-upload">
+                      <span class="restaurant-qr-preview" id="restaurantBankQrPreview"></span>
+                      <span class="ghost-button compact-button">Thay đổi mã QR</span>
+                      <input id="restaurantBankQrFile" type="file" accept="image/*">
+                    </label>
+                    <span class="restaurant-bank-qr" id="restaurantPreviewBankQr" hidden></span>
+                  </div>
+                  <div class="restaurant-bank-card">
+                    <label class="bank-preview-field">
+                      <span>Ngân hàng</span>
+                      <input id="restaurantBankName" type="text" maxlength="80" placeholder="Vietcombank">
+                    </label>
+                    <label class="bank-preview-field">
+                      <span>Chủ tài khoản</span>
+                      <input id="restaurantBankAccountName" type="text" maxlength="100" placeholder="TRAN NGOC TAI">
+                    </label>
+                    <label class="bank-preview-field">
+                      <span>Số tài khoản</span>
+                      <input id="restaurantBankAccountNumber" type="text" maxlength="60" placeholder="1016 8888 9999">
+                    </label>
+                    <label class="bank-preview-field">
+                      <span>Nội dung mặc định</span>
+                      <input id="restaurantBankTransferNote" type="text" maxlength="160" placeholder="Ruộng coffee - Thanh toán hóa đơn">
+                    </label>
+                    <strong id="restaurantPreviewBankName" hidden>Chưa có ngân hàng</strong>
+                    <b id="restaurantPreviewBankAccountName" hidden>Chưa nhập</b>
+                    <b id="restaurantPreviewBankAccountNumber" hidden>Chưa nhập</b>
+                    <b id="restaurantPreviewBankTransferNote" hidden>Chưa nhập</b>
+                  </div>
+                </div>
+                <p class="restaurant-preview-tip">Khuyến nghị: Sử dụng tài khoản ngân hàng của quán để khách thanh toán dễ dàng và nhanh chóng.</p>
+              </div>
             </div>
           </section>
         </div>
@@ -531,7 +590,7 @@
     </main>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/api.js?v=7"></script>
-    <script src="/js/admin.js?v=41"></script>
+    <script src="/js/api.js?v=8"></script>
+    <script src="/js/admin.js?v=45"></script>
   </body>
 </html>

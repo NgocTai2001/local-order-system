@@ -36,13 +36,26 @@
   function applyRestaurantInfo(info, pageLabel) {
     const name = info?.name || 'Pho Viet';
     const mark = initials(name);
+    const logo = String(info?.logo_image || '').trim();
 
     document.querySelectorAll('[data-restaurant-name]').forEach((element) => {
       element.textContent = name;
     });
 
     document.querySelectorAll('[data-restaurant-mark]').forEach((element) => {
-      element.textContent = mark;
+      element.replaceChildren();
+      if (logo) {
+        const image = document.createElement('img');
+        image.src = logo;
+        image.alt = name;
+        image.loading = 'lazy';
+        image.onerror = () => {
+          element.textContent = mark;
+        };
+        element.append(image);
+      } else {
+        element.textContent = mark;
+      }
     });
 
     if (pageLabel) {
@@ -130,6 +143,12 @@
     },
     uploadMenuImage(payload) {
       return request('/api/uploads/menu-image', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    },
+    uploadRestaurantImage(payload) {
+      return request('/api/uploads/restaurant-image', {
         method: 'POST',
         body: JSON.stringify(payload)
       });

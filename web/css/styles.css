@@ -94,6 +94,13 @@ a {
   background: var(--brand);
   color: #fff;
   font-weight: 800;
+  overflow: hidden;
+}
+
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .brand strong,
@@ -908,6 +915,24 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.option-quantity-controls {
+  display: grid;
+  grid-template-columns: 44px 56px 44px;
+  align-items: center;
+  justify-items: center;
+  gap: 12px;
+}
+
+.option-quantity-controls .qty-button {
+  width: 40px;
+  height: 40px;
+}
+
+.option-quantity-controls strong {
+  min-width: 56px;
+  text-align: center;
 }
 
 .option-sheet-footer {
@@ -2470,6 +2495,46 @@ th {
   overflow-wrap: anywhere;
 }
 
+.bill-payment-preview {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.bill-payment-info:empty {
+  display: none;
+}
+
+.bill-payment-preview img {
+  width: 82px;
+  height: 82px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  object-fit: contain;
+  background: #fff;
+}
+
+.bill-payment-preview div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.bill-payment-preview strong {
+  text-align: left;
+  font-size: 14px;
+}
+
+.bill-payment-preview span {
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
 .bill-summary-list {
   display: grid;
   gap: 8px;
@@ -2512,20 +2577,268 @@ th {
   border-color: var(--brand-dark);
 }
 
-.restaurant-preview {
+.restaurant-settings-layout {
   display: grid;
-  gap: 10px;
-  padding: 18px;
+  grid-template-columns: minmax(320px, 0.92fr) minmax(360px, 1.08fr);
+  gap: 18px;
 }
 
-.restaurant-preview strong {
+.restaurant-info-panel,
+.restaurant-bill-preview-panel {
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.icon-form-field {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  column-gap: 10px;
+}
+
+.icon-form-field .field-icon {
+  grid-row: span 2;
+  align-self: center;
+  color: var(--brand-dark);
+}
+
+.icon-form-field input {
+  grid-column: 2;
+}
+
+.restaurant-payment-fields {
+  display: grid;
+  gap: 10px;
+}
+
+.restaurant-payment-fields h3 {
+  display: block;
+  margin: 0;
+  color: var(--ink);
+}
+
+.restaurant-qr-upload {
+  position: relative;
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.restaurant-qr-upload {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  min-height: 112px;
+  padding: 10px;
+  text-align: center;
+}
+
+.restaurant-qr-upload .ghost-button {
+  width: 100%;
+  padding: 8px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.restaurant-qr-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.restaurant-preview-logo,
+.restaurant-bank-qr,
+.restaurant-qr-preview {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--surface-soft);
+  color: var(--brand-dark);
+  font-weight: 900;
+  text-align: center;
+}
+
+.restaurant-preview-logo {
+  width: 86px;
+  height: 86px;
+  border-radius: 999px;
+}
+
+.restaurant-qr-preview,
+.restaurant-bank-qr {
+  width: 112px;
+  height: 112px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.restaurant-preview-logo img,
+.restaurant-bank-qr img,
+.restaurant-qr-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.restaurant-bank-qr img,
+.restaurant-qr-preview img {
+  object-fit: contain;
+}
+
+.restaurant-preview {
+  display: grid;
+  gap: 18px;
+  margin: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.restaurant-preview-head {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.restaurant-preview-brand {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.restaurant-logo-change-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  min-height: 34px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.restaurant-logo-change-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.restaurant-preview-logo {
+  width: 112px;
+  height: 112px;
+}
+
+.restaurant-preview-info {
+  display: grid;
+  gap: 9px;
+}
+
+.restaurant-preview-info strong {
   font-size: 24px;
   line-height: 1.2;
 }
 
-.restaurant-preview span {
+.restaurant-preview-info span,
+.restaurant-bank-card span,
+.restaurant-bank-preview p {
   color: var(--muted);
   overflow-wrap: anywhere;
+}
+
+.restaurant-bank-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.restaurant-bank-preview h3 {
+  margin: 0;
+  color: var(--brand-dark);
+}
+
+.restaurant-bank-preview p {
+  margin: 3px 0 0;
+  font-size: 13px;
+}
+
+.restaurant-bank-preview-grid {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.restaurant-qr-editor {
+  display: grid;
+  align-self: start;
+  gap: 8px;
+}
+
+.restaurant-bank-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.bank-preview-field {
+  display: grid;
+  gap: 4px;
+}
+
+.bank-preview-field span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.bank-preview-field input {
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  font-weight: 800;
+}
+
+.restaurant-bank-card strong {
+  color: var(--brand-dark);
+  font-size: 16px;
+}
+
+.restaurant-bank-card b {
+  overflow-wrap: anywhere;
+}
+
+.restaurant-preview-tip {
+  padding: 12px;
+  border-radius: 8px;
+  background: #e7f3ed;
+  color: var(--brand-dark) !important;
+}
+
+.bill-print-logo,
+.print-receipt-logo {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 6px;
+  border-radius: 999px;
+  object-fit: cover;
 }
 
 .print-area {
@@ -2624,6 +2937,23 @@ th {
   font-size: 16px;
 }
 
+.print-receipt-payment {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: 6px;
+  border-top: 1px solid #111;
+  padding-top: 8px;
+  text-align: center;
+}
+
+.print-receipt-payment img {
+  width: 34mm;
+  height: 34mm;
+  object-fit: contain;
+}
+
 @keyframes cartPulse {
   0%,
   100% {
@@ -2650,6 +2980,7 @@ th {
   .customer-shell,
   .admin-shell,
   .menu-admin-layout,
+  .restaurant-settings-layout,
   .live-table-layout,
   .bill-content {
     grid-template-columns: 1fr;
@@ -2787,6 +3118,39 @@ th {
     flex-direction: column;
   }
 
+  .bill-panel > .section-bar {
+    align-items: flex-start;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .bill-title-block {
+    min-width: 0;
+  }
+
+  .bill-title-block h2 {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .bill-title-block h2 span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .bill-panel .quick-order-button {
+    width: 40px;
+    min-width: 40px;
+    min-height: 36px;
+    padding: 0;
+    flex: 0 0 40px;
+  }
+
+  .bill-panel .quick-order-button span {
+    display: none;
+  }
+
   .section-bar .ghost-button {
     width: 100%;
   }
@@ -2856,6 +3220,25 @@ th {
 
   .form-grid.two {
     grid-template-columns: 1fr;
+  }
+
+  .restaurant-preview {
+    margin: 14px;
+    padding: 14px;
+  }
+
+  .restaurant-preview-head,
+  .restaurant-bank-preview-grid,
+  .bill-payment-preview,
+  .restaurant-qr-upload {
+    grid-template-columns: 1fr;
+  }
+
+  .restaurant-preview-logo,
+  .restaurant-bank-qr,
+  .restaurant-qr-preview,
+  .bill-payment-preview img {
+    justify-self: center;
   }
 
   .form-grid.four,

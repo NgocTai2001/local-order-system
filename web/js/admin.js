@@ -93,6 +93,7 @@
   const billMeta = document.getElementById('billMeta');
   const billOrders = document.getElementById('billOrders');
   const billPrintInfo = document.getElementById('billPrintInfo');
+  const billPaymentInfo = document.getElementById('billPaymentInfo');
   const billSummary = document.getElementById('billSummary');
   const billGrandTotal = document.getElementById('billGrandTotal');
   const closeSessionButton = document.getElementById('closeSessionButton');
@@ -102,11 +103,26 @@
   const restaurantAddress = document.getElementById('restaurantAddress');
   const restaurantPhone = document.getElementById('restaurantPhone');
   const restaurantCashier = document.getElementById('restaurantCashier');
+  const restaurantLogoImage = document.getElementById('restaurantLogoImage');
+  const restaurantLogoFile = document.getElementById('restaurantLogoFile');
+  const restaurantBankName = document.getElementById('restaurantBankName');
+  const restaurantBankAccountName = document.getElementById('restaurantBankAccountName');
+  const restaurantBankAccountNumber = document.getElementById('restaurantBankAccountNumber');
+  const restaurantBankTransferNote = document.getElementById('restaurantBankTransferNote');
+  const restaurantBankQrImage = document.getElementById('restaurantBankQrImage');
+  const restaurantBankQrFile = document.getElementById('restaurantBankQrFile');
+  const restaurantBankQrPreview = document.getElementById('restaurantBankQrPreview');
   const restaurantMessage = document.getElementById('restaurantMessage');
+  const restaurantPreviewLogo = document.getElementById('restaurantPreviewLogo');
   const restaurantPreviewName = document.getElementById('restaurantPreviewName');
   const restaurantPreviewAddress = document.getElementById('restaurantPreviewAddress');
   const restaurantPreviewPhone = document.getElementById('restaurantPreviewPhone');
   const restaurantPreviewCashier = document.getElementById('restaurantPreviewCashier');
+  const restaurantPreviewBankQr = document.getElementById('restaurantPreviewBankQr');
+  const restaurantPreviewBankName = document.getElementById('restaurantPreviewBankName');
+  const restaurantPreviewBankAccountName = document.getElementById('restaurantPreviewBankAccountName');
+  const restaurantPreviewBankAccountNumber = document.getElementById('restaurantPreviewBankAccountNumber');
+  const restaurantPreviewBankTransferNote = document.getElementById('restaurantPreviewBankTransferNote');
 
   let menu = [];
   let menuCategories = [];
@@ -117,7 +133,13 @@
     name: 'Pho Viet',
     address: '',
     phone: '',
-    cashier_name: ''
+    cashier_name: '',
+    logo_image: '',
+    bank_name: '',
+    bank_account_name: '',
+    bank_account_number: '',
+    bank_transfer_note: '',
+    bank_qr_image: ''
   };
   let selectedLiveTableId = null;
   let lastClosedBill = null;
@@ -211,8 +233,122 @@
       name: restaurantName.value.trim(),
       address: restaurantAddress.value.trim(),
       phone: restaurantPhone.value.trim(),
-      cashier_name: restaurantCashier.value.trim()
+      cashier_name: restaurantCashier.value.trim(),
+      logo_image: restaurantLogoImage.value.trim(),
+      bank_name: restaurantBankName.value.trim(),
+      bank_account_name: restaurantBankAccountName.value.trim(),
+      bank_account_number: restaurantBankAccountNumber.value.trim(),
+      bank_transfer_note: restaurantBankTransferNote.value.trim(),
+      bank_qr_image: restaurantBankQrImage.value.trim()
     };
+  }
+
+  function initials(value) {
+    return String(value || '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'PV';
+  }
+
+  function renderImageSlot(slot, imageUrl, fallbackText) {
+    slot.replaceChildren();
+    const url = String(imageUrl || '').trim();
+
+    if (url) {
+      const image = document.createElement('img');
+      image.src = url;
+      image.alt = fallbackText;
+      image.loading = 'lazy';
+      image.onerror = () => {
+        slot.textContent = fallbackText;
+      };
+      slot.append(image);
+      return;
+    }
+
+    slot.textContent = fallbackText;
+  }
+
+  async function previewImageFile(input, slot, fallbackText) {
+    const file = input.files?.[0];
+    if (!file) {
+      return '';
+    }
+
+    try {
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Vui lòng chọn file ảnh.');
+      }
+      const dataUrl = await readFileAsDataUrl(file);
+      renderImageSlot(slot, dataUrl, fallbackText);
+      return dataUrl;
+    } catch (error) {
+      setRestaurantMessage(error.message, true);
+      input.value = '';
+      return '';
+    }
+  }
+
+  async function uploadRestaurantImageIfNeeded(fileInput, hiddenInput, kind) {
+    const file = fileInput.files?.[0];
+
+    if (!file) {
+      return hiddenInput.value.trim();
+    }
+
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Vui lòng chọn file ảnh.');
+    }
+
+    const dataUrl = kind === 'bank-qr'
+      ? await readFileAsDataUrl(file)
+      : await fileToCompressedDataUrl(file);
+    const uploaded = await api.uploadRestaurantImage({
+      fileName: file.name,
+      kind,
+      dataUrl
+    });
+
+    hiddenInput.value = uploaded.url;
+    fileInput.value = '';
+    return uploaded.url;
+  }
+
+  async function uploadRestaurantImagesIfNeeded() {
+    if (restaurantLogoFile.files?.[0] || restaurantBankQrFile.files?.[0]) {
+      setRestaurantMessage('Đang upload ảnh...');
+    }
+    await uploadRestaurantImageIfNeeded(restaurantLogoFile, restaurantLogoImage, 'logo');
+    await uploadRestaurantImageIfNeeded(restaurantBankQrFile, restaurantBankQrImage, 'bank-qr');
+  }
+
+  function syncRestaurantDraftPreview() {
+    const draft = restaurantPayloadFromForm();
+    const restaurantNameText = draft.name || 'Pho Viet';
+    const logoUrl = restaurantPreviewLogo.querySelector('img')?.src || draft.logo_image;
+    const qrUrl = restaurantBankQrPreview.querySelector('img')?.src || draft.bank_qr_image;
+    const transferNote = draft.bank_transfer_note || `${restaurantNameText} - Thanh toán hóa đơn`;
+
+    renderImageSlot(restaurantPreviewLogo, logoUrl, initials(restaurantNameText));
+    renderImageSlot(restaurantPreviewBankQr, qrUrl, 'QR');
+
+    restaurantPreviewName.textContent = restaurantNameText.toUpperCase();
+    restaurantPreviewAddress.textContent = draft.address
+      ? `Địa chỉ: ${draft.address}`
+      : 'Chưa có địa chỉ';
+    restaurantPreviewPhone.textContent = draft.phone
+      ? `SĐT: ${draft.phone}`
+      : 'Chưa có số điện thoại';
+    restaurantPreviewCashier.textContent = draft.cashier_name
+      ? `Thu ngân: ${draft.cashier_name}`
+      : 'Thu ngân: chưa nhập';
+    restaurantPreviewBankName.textContent = draft.bank_name || 'Chưa có ngân hàng';
+    restaurantPreviewBankAccountName.textContent = draft.bank_account_name || 'Chưa nhập';
+    restaurantPreviewBankAccountNumber.textContent = draft.bank_account_number || 'Chưa nhập';
+    restaurantPreviewBankTransferNote.textContent = transferNote;
   }
 
   function renderRestaurantInfo() {
@@ -220,13 +356,19 @@
     restaurantAddress.value = restaurantInfo.address || '';
     restaurantPhone.value = restaurantInfo.phone || '';
     restaurantCashier.value = restaurantInfo.cashier_name || '';
+    restaurantLogoImage.value = restaurantInfo.logo_image || '';
+    restaurantBankName.value = restaurantInfo.bank_name || '';
+    restaurantBankAccountName.value = restaurantInfo.bank_account_name || '';
+    restaurantBankAccountNumber.value = restaurantInfo.bank_account_number || '';
+    restaurantBankTransferNote.value = restaurantInfo.bank_transfer_note || '';
+    restaurantBankQrImage.value = restaurantInfo.bank_qr_image || '';
+    restaurantLogoFile.value = '';
+    restaurantBankQrFile.value = '';
 
-    restaurantPreviewName.textContent = restaurantInfo.name || 'Pho Viet';
-    restaurantPreviewAddress.textContent = restaurantInfo.address || 'Chưa có địa chỉ';
-    restaurantPreviewPhone.textContent = restaurantInfo.phone || 'Chưa có số điện thoại';
-    restaurantPreviewCashier.textContent = restaurantInfo.cashier_name
-      ? `Thu ngân: ${restaurantInfo.cashier_name}`
-      : 'Thu ngân: chưa nhập';
+    const restaurantNameText = restaurantInfo.name || 'Pho Viet';
+    renderImageSlot(restaurantPreviewLogo, restaurantInfo.logo_image, initials(restaurantNameText));
+    renderImageSlot(restaurantBankQrPreview, restaurantInfo.bank_qr_image, 'QR');
+    syncRestaurantDraftPreview();
 
     api.applyRestaurantInfo(restaurantInfo, 'Admin');
 
@@ -772,6 +914,7 @@
     setRestaurantMessage('Đang lưu...');
 
     try {
+      await uploadRestaurantImagesIfNeeded();
       restaurantInfo = await api.updateRestaurantInfo(restaurantPayloadFromForm());
       renderRestaurantInfo();
       setRestaurantMessage('Đã lưu thông tin quán.');
@@ -1310,6 +1453,14 @@
     card.className = 'print-receipt-card';
 
     const restaurant = bill.restaurant || restaurantInfo;
+    if (restaurant.logo_image) {
+      const logo = document.createElement('img');
+      logo.className = 'print-receipt-logo';
+      logo.src = restaurant.logo_image;
+      logo.alt = restaurant.name || 'Logo quán';
+      card.append(logo);
+    }
+
     const title = document.createElement('h2');
     title.textContent = restaurant.name || 'Pho Viet';
     card.append(title);
@@ -1357,6 +1508,37 @@
     totalValue.textContent = api.formatCurrency(bill.grand_total || 0);
     totalRow.append(totalLabel, totalValue);
     card.append(totalRow);
+
+    if (restaurant.bank_qr_image || restaurant.bank_account_number) {
+      const payment = document.createElement('div');
+      payment.className = 'print-receipt-payment';
+      const paymentTitle = document.createElement('h3');
+      paymentTitle.textContent = 'Thanh toán';
+      payment.append(paymentTitle);
+
+      if (restaurant.bank_qr_image) {
+        const qr = document.createElement('img');
+        qr.src = restaurant.bank_qr_image;
+        qr.alt = 'QR ngân hàng';
+        payment.append(qr);
+      }
+
+      for (const text of [
+        restaurant.bank_name || '',
+        restaurant.bank_account_name ? `Chủ TK: ${restaurant.bank_account_name}` : '',
+        restaurant.bank_account_number ? `STK: ${restaurant.bank_account_number}` : '',
+        restaurant.bank_transfer_note ? `Nội dung: ${restaurant.bank_transfer_note}` : ''
+      ]) {
+        if (!text) {
+          continue;
+        }
+        const line = document.createElement('p');
+        line.textContent = text;
+        payment.append(line);
+      }
+
+      card.append(payment);
+    }
 
     return card;
   }
@@ -1662,6 +1844,15 @@
   function renderBillPrintInfo(info, bill) {
     const source = info || restaurantInfo;
     billPrintInfo.replaceChildren();
+    billPaymentInfo.replaceChildren();
+
+    if (source.logo_image) {
+      const logo = document.createElement('img');
+      logo.className = 'bill-print-logo';
+      logo.src = source.logo_image;
+      logo.alt = source.name || 'Logo quán';
+      billPrintInfo.append(logo);
+    }
 
     const name = document.createElement('strong');
     name.textContent = source.name || 'Pho Viet';
@@ -1681,6 +1872,39 @@
       const line = document.createElement('span');
       line.textContent = text;
       billPrintInfo.append(line);
+    }
+
+    if (source.bank_qr_image || source.bank_account_number) {
+      const payment = document.createElement('div');
+      payment.className = 'bill-payment-preview';
+
+      if (source.bank_qr_image) {
+        const qr = document.createElement('img');
+        qr.src = source.bank_qr_image;
+        qr.alt = 'QR ngân hàng';
+        payment.append(qr);
+      }
+
+      const content = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = source.bank_name || 'Thông tin thanh toán';
+      content.append(title);
+
+      for (const text of [
+        source.bank_account_name ? `Chủ TK: ${source.bank_account_name}` : '',
+        source.bank_account_number ? `STK: ${source.bank_account_number}` : '',
+        source.bank_transfer_note ? `ND: ${source.bank_transfer_note}` : ''
+      ]) {
+        if (!text) {
+          continue;
+        }
+        const line = document.createElement('span');
+        line.textContent = text;
+        content.append(line);
+      }
+
+      payment.append(content);
+      billPaymentInfo.append(payment);
     }
   }
 
@@ -2115,6 +2339,31 @@
     }
   });
   restaurantForm.addEventListener('submit', saveRestaurantInfo);
+  [
+    restaurantName,
+    restaurantAddress,
+    restaurantPhone,
+    restaurantCashier,
+    restaurantBankName,
+    restaurantBankAccountName,
+    restaurantBankAccountNumber,
+    restaurantBankTransferNote
+  ].forEach((input) => {
+    input.addEventListener('input', syncRestaurantDraftPreview);
+  });
+  restaurantLogoFile.addEventListener('change', async () => {
+    await previewImageFile(
+      restaurantLogoFile,
+      restaurantPreviewLogo,
+      initials(restaurantName.value || restaurantInfo.name)
+    );
+  });
+  restaurantBankQrFile.addEventListener('change', async () => {
+    const dataUrl = await previewImageFile(restaurantBankQrFile, restaurantBankQrPreview, 'QR');
+    if (dataUrl) {
+      renderImageSlot(restaurantPreviewBankQr, dataUrl, 'QR');
+    }
+  });
 
   tableForm.addEventListener('submit', saveTable);
   bulkTableForm.addEventListener('submit', createBulkTables);

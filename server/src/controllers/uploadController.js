@@ -5,4 +5,9 @@ function uploadMenuImage(req, res) {
   res.status(201).json(image);
 }
 
-module.exports = { uploadMenuImage };
+function uploadRestaurantImage(req, res) {
+  const image = uploadService.saveRestaurantImage(req.body);
+  res.status(201).json(image);
+}
+
+module.exports = { uploadMenuImage, uploadRestaurantImage };
