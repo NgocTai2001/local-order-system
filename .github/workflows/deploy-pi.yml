@@ -1,0 +1,81 @@
+name: Deploy to Raspberry Pi
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: raspberry-pi-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy Docker application
+    runs-on:
+      - self-hosted
+      - Linux
+      - ARM64
+
+    timeout-minutes: 60
+
+    steps:
+      - name: Update source code
+        working-directory: /home/pi/project/local-order-system
+        run: |
+          set -euo pipefail
+
+          echo "Fetching latest code..."
+          git fetch origin main
+
+          echo "Updating working tree..."
+          git reset --hard origin/main
+
+          echo "Current commit:"
+          git log -1 --oneline
+
+      - name: Validate Docker Compose
+        working-directory: /home/pi/project/local-order-system
+        run: |
+          docker compose config --quiet
+
+      - name: Build and restart Docker containers
+        working-directory: /home/pi/project/local-order-system
+        run: |
+          docker compose up -d \
+            --build \
+            --remove-orphans
+
+      - name: Show container status
+        working-directory: /home/pi/project/local-order-system
+        run: |
+          docker compose ps
+
+      - name: Wait for website
+        working-directory: /home/pi/project/local-order-system
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/ > /dev/null; then
+              echo "Website is running successfully"
+              exit 0
+            fi
+
+            echo "Waiting for website... attempt ${attempt}/30"
+            sleep 3
+          done
+
+          echo "Website health check failed"
+          docker compose ps
+          docker compose logs --tail=100 nginx api
+          exit 1
+
+      - name: Deployment summary
+        run: |
+          echo "Deployment completed"
+          echo "Local URL: http://127.0.0.1:8080"
+          echo "Public URL: https://nextcloud.tail414351.ts.net"
