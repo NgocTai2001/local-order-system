@@ -41,7 +41,7 @@ function getOrCreateOpenSession(tableId) {
 
   db.prepare(`
     UPDATE tables
-    SET status = 'occupied',
+    SET status = 'in_use',
         updated_at = datetime('now')
     WHERE id = ?
   `).run(tableId);
@@ -254,7 +254,7 @@ function closeCurrentSession(tableId) {
 
     db.prepare(`
       UPDATE tables
-      SET status = 'empty',
+      SET status = 'available',
           updated_at = datetime('now')
       WHERE id = ?
     `).run(tableId);

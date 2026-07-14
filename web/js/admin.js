@@ -87,8 +87,41 @@
   const tableDetailScreen = document.getElementById('tableDetailScreen');
   const backToTablesButton = document.getElementById('backToTablesButton');
   const quickOrderLink = document.getElementById('quickOrderLink');
-  const liveTablesGrid = document.getElementById('liveTablesGrid');
-  const liveTableCount = document.getElementById('liveTableCount');
+  const downloadTableOrderQr = document.getElementById('downloadTableOrderQr');
+  const floorAreaList = document.getElementById('floorAreaList');
+  const selectedAreaName = document.getElementById('selectedAreaName');
+  const floorPlanViewport = document.getElementById('floorPlanViewport');
+  const floorPlanStage = document.getElementById('floorPlanStage');
+  const floorPlanEmpty = document.getElementById('floorPlanEmpty');
+  const floorSaveStatus = document.getElementById('floorSaveStatus');
+  const floorArrangeMode = document.getElementById('floorArrangeMode');
+  const floorGridToggle = document.getElementById('floorGridToggle');
+  const floorTableSearch = document.getElementById('floorTableSearch');
+  const floorStatusFilters = document.getElementById('floorStatusFilters');
+  const floorModalBackdrop = document.getElementById('floorModalBackdrop');
+  const areaModal = document.getElementById('areaModal');
+  const floorAreaForm = document.getElementById('floorAreaForm');
+  const floorAreaId = document.getElementById('floorAreaId');
+  const floorAreaName = document.getElementById('floorAreaName');
+  const floorAreaDescription = document.getElementById('floorAreaDescription');
+  const floorAreaSortOrder = document.getElementById('floorAreaSortOrder');
+  const floorAreaActive = document.getElementById('floorAreaActive');
+  const areaModalTitle = document.getElementById('areaModalTitle');
+  const areaModalMode = document.getElementById('areaModalMode');
+  const deleteAreaButton = document.getElementById('deleteAreaButton');
+  const floorAreaMessage = document.getElementById('floorAreaMessage');
+  const floorTableModal = document.getElementById('floorTableModal');
+  const floorTableForm = document.getElementById('floorTableForm');
+  const floorTableId = document.getElementById('floorTableId');
+  const floorTableName = document.getElementById('floorTableName');
+  const floorTableArea = document.getElementById('floorTableArea');
+  const floorTableShape = document.getElementById('floorTableShape');
+  const floorTableCapacity = document.getElementById('floorTableCapacity');
+  const floorTableStatus = document.getElementById('floorTableStatus');
+  const floorTableModalTitle = document.getElementById('floorTableModalTitle');
+  const floorTableModalMode = document.getElementById('floorTableModalMode');
+  const deleteFloorTableButton = document.getElementById('deleteFloorTableButton');
+  const floorTableMessage = document.getElementById('floorTableMessage');
   const billTitle = document.getElementById('billTitle');
   const billMeta = document.getElementById('billMeta');
   const billOrders = document.getElementById('billOrders');
@@ -127,7 +160,12 @@
   let menu = [];
   let menuCategories = [];
   let optionGroups = [];
+  let areas = [];
   let tables = [];
+  let selectedAreaId = null;
+  let floorStatusFilter = 'all';
+  let floorPositionSaveTimer = null;
+  const pendingFloorPositions = new Set();
   let realtimeRefreshTimer = null;
   let restaurantInfo = {
     name: 'Pho Viet',
@@ -151,10 +189,10 @@
   const TODAY_OFFER_KEY = 'today-offer';
   const FOR_YOU_KEY = 'for-you';
   const tableStatusLabels = {
-    empty: 'Trống',
-    occupied: 'Đang ăn',
-    payment_requested: 'Chờ thanh toán',
-    paid: 'Đã thanh toán'
+    available: 'Trống',
+    in_use: 'Đang dùng',
+    reserved: 'Đã đặt',
+    maintenance: 'Bảo trì'
   };
   const orderStatusLabels = {
     pending: 'Mới gọi',
@@ -335,16 +373,10 @@
     renderImageSlot(restaurantPreviewLogo, logoUrl, initials(restaurantNameText));
     renderImageSlot(restaurantPreviewBankQr, qrUrl, 'QR');
 
-    restaurantPreviewName.textContent = restaurantNameText.toUpperCase();
-    restaurantPreviewAddress.textContent = draft.address
-      ? `Địa chỉ: ${draft.address}`
-      : 'Chưa có địa chỉ';
-    restaurantPreviewPhone.textContent = draft.phone
-      ? `SĐT: ${draft.phone}`
-      : 'Chưa có số điện thoại';
-    restaurantPreviewCashier.textContent = draft.cashier_name
-      ? `Thu ngân: ${draft.cashier_name}`
-      : 'Thu ngân: chưa nhập';
+    restaurantPreviewName.textContent = restaurantNameText;
+    restaurantPreviewAddress.textContent = draft.address || 'Chưa có địa chỉ';
+    restaurantPreviewPhone.textContent = draft.phone || 'Chưa có số điện thoại';
+    restaurantPreviewCashier.textContent = draft.cashier_name || 'Chưa nhập';
     restaurantPreviewBankName.textContent = draft.bank_name || 'Chưa có ngân hàng';
     restaurantPreviewBankAccountName.textContent = draft.bank_account_name || 'Chưa nhập';
     restaurantPreviewBankAccountNumber.textContent = draft.bank_account_number || 'Chưa nhập';
@@ -1575,6 +1607,8 @@
   }
 
   async function downloadQr(table, type) {
+    const notify = isTableDetailOpen() ? setBillMessage : setTableMessage;
+
     try {
       const qr = await ensureQr(table.id);
       const qrData = qr[type];
@@ -1590,9 +1624,9 @@
       document.body.append(link);
       link.click();
       link.remove();
-      setTableMessage(`Đã tải QR ${label} ${table.name}.`);
+      notify(`Đã tải QR ${label} ${table.name}.`);
     } catch (error) {
-      setTableMessage(error.message, true);
+      notify(error.message, true);
     }
   }
 
@@ -1832,6 +1866,7 @@
     if (!url) {
       quickOrderLink.hidden = true;
       quickOrderLink.removeAttribute('href');
+      downloadTableOrderQr.hidden = true;
       return;
     }
 
@@ -1839,6 +1874,9 @@
     quickOrderLink.hidden = false;
     quickOrderLink.title = `Gọi món cho ${table.name}`;
     quickOrderLink.setAttribute('aria-label', `Gọi món cho ${table.name}`);
+    downloadTableOrderQr.hidden = false;
+    downloadTableOrderQr.title = `Tải mã QR gọi món cho ${table.name}`;
+    downloadTableOrderQr.setAttribute('aria-label', `Tải mã QR gọi món cho ${table.name}`);
   }
 
   function renderBillPrintInfo(info, bill) {
@@ -1921,31 +1959,397 @@
     setBillMessage('');
   }
 
-  function renderLiveTables() {
-    liveTablesGrid.replaceChildren();
-    liveTableCount.textContent = `${tables.length} bàn`;
+  function setFloorMessage(element, text, isError = false) {
+    element.textContent = text || '';
+    element.style.color = isError ? '#a9371d' : '';
+  }
 
-    if (tables.length === 0) {
-      liveTablesGrid.innerHTML = '<p class="empty-state">Chưa có bàn.</p>';
-      resetBillPanel();
+  function currentArea() {
+    return areas.find((area) => area.id === Number(selectedAreaId)) || null;
+  }
+
+  function renderFloorAreaOptions() {
+    const selectedValue = floorTableArea.value;
+    floorTableArea.replaceChildren();
+
+    for (const area of areas) {
+      const option = document.createElement('option');
+      option.value = area.id;
+      option.textContent = area.name;
+      option.disabled = !area.is_active;
+      floorTableArea.append(option);
+    }
+
+    if (areas.some((area) => String(area.id) === selectedValue)) {
+      floorTableArea.value = selectedValue;
+    } else if (selectedAreaId) {
+      floorTableArea.value = String(selectedAreaId);
+    }
+  }
+
+  function selectArea(areaId) {
+    selectedAreaId = Number(areaId);
+    floorTableSearch.value = '';
+    renderFloorAreas();
+    renderFloorPlan();
+  }
+
+  function renderFloorAreas() {
+    floorAreaList.replaceChildren();
+    const area = currentArea();
+    selectedAreaName.textContent = area?.name || 'Chưa có khu vực';
+    document.getElementById('editSelectedAreaButton').disabled = !area;
+    document.getElementById('editAreaButton').disabled = !area;
+
+    if (areas.length === 0) {
+      floorAreaList.innerHTML = '<p class="empty-state compact-empty">Chưa có khu vực.</p>';
+      renderFloorAreaOptions();
       return;
     }
 
-    for (const table of tables) {
-      const card = document.createElement('button');
-      card.className = 'table-status-card';
-      card.type = 'button';
-      card.classList.toggle('is-selected', table.id === selectedLiveTableId);
+    for (const item of areas) {
+      const button = document.createElement('button');
+      button.className = 'floor-area-item';
+      button.type = 'button';
+      button.classList.toggle('is-active', item.id === Number(selectedAreaId));
+      button.classList.toggle('is-inactive', !item.is_active);
 
-      const titleRow = document.createElement('span');
-      titleRow.className = 'table-status-title';
+      const icon = document.createElement('span');
+      icon.className = 'floor-area-icon';
+      icon.textContent = '⌂';
+      const name = document.createElement('span');
+      name.textContent = item.name;
+      const count = document.createElement('b');
+      count.textContent = item.table_count;
+      button.append(icon, name, count);
+      button.addEventListener('click', () => selectArea(item.id));
+      floorAreaList.append(button);
+    }
 
-      const name = document.createElement('strong');
-      name.textContent = table.name;
-      titleRow.append(name, createStatusPill(table.status));
-      card.append(titleRow);
-      card.addEventListener('click', () => selectLiveTable(table.id));
-      liveTablesGrid.append(card);
+    renderFloorAreaOptions();
+  }
+
+  function filteredFloorTables() {
+    const query = floorTableSearch.value.trim().toLocaleLowerCase('vi');
+
+    return tables.filter((table) => {
+      if (Number(table.area_id) !== Number(selectedAreaId)) {
+        return false;
+      }
+      if (floorStatusFilter !== 'all' && table.status !== floorStatusFilter) {
+        return false;
+      }
+      return !query || table.name.toLocaleLowerCase('vi').includes(query);
+    });
+  }
+
+  function updateFloorPlanSize() {
+    const viewportWidth = Math.max(floorPlanViewport.clientWidth - 2, 320);
+    const baseWidth = Math.max(viewportWidth, 900);
+    floorPlanStage.style.width = `${Math.round(baseWidth)}px`;
+    floorPlanStage.style.height = '560px';
+  }
+
+  async function savePendingFloorPositions() {
+    const ids = Array.from(pendingFloorPositions);
+    pendingFloorPositions.clear();
+
+    if (ids.length === 0) {
+      return;
+    }
+
+    setFloorMessage(floorSaveStatus, 'Đang lưu vị trí...');
+
+    try {
+      await api.updateTablePositions(ids.map((id) => {
+        const table = tables.find((item) => item.id === id);
+        return { id, pos_x: table.pos_x, pos_y: table.pos_y };
+      }));
+      setFloorMessage(floorSaveStatus, 'Đã lưu vị trí.');
+      window.setTimeout(() => {
+        if (floorSaveStatus.textContent === 'Đã lưu vị trí.') {
+          setFloorMessage(floorSaveStatus, '');
+        }
+      }, 1200);
+    } catch (error) {
+      setFloorMessage(floorSaveStatus, error.message, true);
+      await loadLiveTables();
+    }
+  }
+
+  function scheduleFloorPositionSave(tableIdValue) {
+    pendingFloorPositions.add(tableIdValue);
+    window.clearTimeout(floorPositionSaveTimer);
+    setFloorMessage(floorSaveStatus, 'Chưa lưu...');
+    floorPositionSaveTimer = window.setTimeout(savePendingFloorPositions, 500);
+  }
+
+  function bindFloorTableDrag(card, table) {
+    card.addEventListener('pointerdown', (event) => {
+      if (!floorArrangeMode.checked || event.button !== 0 || event.target.closest('button')) {
+        return;
+      }
+
+      const stageRect = floorPlanStage.getBoundingClientRect();
+      const cardRect = card.getBoundingClientRect();
+      const offsetX = event.clientX - cardRect.left;
+      const offsetY = event.clientY - cardRect.top;
+      let moved = false;
+
+      card.setPointerCapture(event.pointerId);
+      card.classList.add('is-dragging');
+      event.preventDefault();
+
+      const move = (moveEvent) => {
+        const nextX = Math.max(0, Math.min(100 - table.width,
+          ((moveEvent.clientX - stageRect.left - offsetX) / stageRect.width) * 100));
+        const nextY = Math.max(0, Math.min(100 - table.height,
+          ((moveEvent.clientY - stageRect.top - offsetY) / stageRect.height) * 100));
+        table.pos_x = Number(nextX.toFixed(2));
+        table.pos_y = Number(nextY.toFixed(2));
+        card.style.left = `${table.pos_x}%`;
+        card.style.top = `${table.pos_y}%`;
+        moved = true;
+      };
+
+      const finish = () => {
+        card.removeEventListener('pointermove', move);
+        card.removeEventListener('pointerup', finish);
+        card.removeEventListener('pointercancel', finish);
+        card.classList.remove('is-dragging');
+
+        if (moved) {
+          card.dataset.justDragged = '1';
+          scheduleFloorPositionSave(table.id);
+          window.setTimeout(() => delete card.dataset.justDragged, 0);
+        }
+      };
+
+      card.addEventListener('pointermove', move);
+      card.addEventListener('pointerup', finish);
+      card.addEventListener('pointercancel', finish);
+    });
+  }
+
+  function createFloorTableCard(table) {
+    const card = document.createElement('article');
+    card.className = `floor-table shape-${table.shape} status-${table.status}`;
+    card.style.left = `${table.pos_x}%`;
+    card.style.top = `${table.pos_y}%`;
+    card.style.width = `${table.width}%`;
+    card.style.height = `${table.height}%`;
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-label', `${table.name}, ${tableStatusLabels[table.status] || table.status}`);
+
+    const dragHandle = document.createElement('span');
+    dragHandle.className = 'floor-table-drag-handle';
+    dragHandle.textContent = '⠿';
+    dragHandle.title = 'Kéo để sắp xếp';
+
+    const edit = document.createElement('button');
+    edit.className = 'floor-table-edit';
+    edit.type = 'button';
+    edit.title = `Sửa ${table.name}`;
+    edit.setAttribute('aria-label', `Sửa ${table.name}`);
+    edit.append(iconSvg([
+      'M4 20h4l11-11-4-4L4 16v4',
+      'M13 7l4 4'
+    ]));
+    edit.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openFloorTableModal(table);
+    });
+
+    const name = document.createElement('strong');
+    name.textContent = table.name;
+    const status = document.createElement('span');
+    status.className = 'floor-table-status';
+    status.innerHTML = `<i></i>${tableStatusLabels[table.status] || table.status}`;
+    const capacity = document.createElement('small');
+    capacity.textContent = `${table.capacity} chỗ`;
+    card.append(dragHandle, edit, name, status, capacity);
+
+    const openDetail = () => {
+      if (!floorArrangeMode.checked && !card.dataset.justDragged) {
+        selectLiveTable(table.id);
+      }
+    };
+    card.addEventListener('click', openDetail);
+    card.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openDetail();
+      }
+    });
+    bindFloorTableDrag(card, table);
+    return card;
+  }
+
+  function renderFloorPlan() {
+    updateFloorPlanSize();
+    floorPlanStage.replaceChildren();
+    floorPlanStage.append(floorPlanEmpty);
+    floorPlanStage.classList.toggle('is-arranging', floorArrangeMode.checked);
+    const visibleTables = filteredFloorTables();
+    floorPlanEmpty.hidden = visibleTables.length > 0;
+
+    for (const table of visibleTables) {
+      floorPlanStage.append(createFloorTableCard(table));
+    }
+  }
+
+  function renderLiveTables() {
+    if (!selectedAreaId || !areas.some((area) => area.id === Number(selectedAreaId))) {
+      selectedAreaId = areas.find((area) => area.is_active)?.id || areas[0]?.id || null;
+    }
+    renderFloorAreas();
+    renderFloorPlan();
+
+    if (tables.length === 0) {
+      resetBillPanel();
+    }
+  }
+
+  function openFloorModal(modal) {
+    floorModalBackdrop.hidden = false;
+    modal.hidden = false;
+    document.body.classList.add('modal-open');
+  }
+
+  function closeFloorModals() {
+    floorModalBackdrop.hidden = true;
+    areaModal.hidden = true;
+    floorTableModal.hidden = true;
+    document.body.classList.remove('modal-open');
+    setFloorMessage(floorAreaMessage, '');
+    setFloorMessage(floorTableMessage, '');
+  }
+
+  function openAreaModal(area = null) {
+    floorAreaId.value = area?.id || '';
+    floorAreaName.value = area?.name || '';
+    floorAreaDescription.value = area?.description || '';
+    floorAreaSortOrder.value = area?.sort_order ?? areas.length + 1;
+    floorAreaActive.checked = area ? area.is_active : true;
+    areaModalTitle.textContent = area ? 'Sửa khu vực' : 'Tạo khu vực';
+    areaModalMode.textContent = area ? `#${area.id}` : 'Thêm khu vực phục vụ mới';
+    deleteAreaButton.hidden = !area;
+    openFloorModal(areaModal);
+    floorAreaName.focus();
+  }
+
+  async function saveFloorArea(event) {
+    event.preventDefault();
+    setFloorMessage(floorAreaMessage, 'Đang lưu...');
+    const payload = {
+      name: floorAreaName.value.trim(),
+      description: floorAreaDescription.value.trim(),
+      sort_order: Number(floorAreaSortOrder.value || 0),
+      is_active: floorAreaActive.checked
+    };
+
+    try {
+      const saved = floorAreaId.value
+        ? await api.updateArea(floorAreaId.value, payload)
+        : await api.createArea(payload);
+      selectedAreaId = saved.id;
+      closeFloorModals();
+      await loadLiveTables();
+    } catch (error) {
+      setFloorMessage(floorAreaMessage, error.message, true);
+    }
+  }
+
+  async function removeFloorArea() {
+    const area = areas.find((item) => item.id === Number(floorAreaId.value));
+    if (!area || !window.confirm(`Xoá khu vực "${area.name}"?`)) {
+      return;
+    }
+
+    try {
+      await api.deleteArea(area.id);
+      selectedAreaId = null;
+      closeFloorModals();
+      await loadLiveTables();
+    } catch (error) {
+      setFloorMessage(floorAreaMessage, error.message, true);
+    }
+  }
+
+  const floorShapeSizes = {
+    rectangle: { width: 18, height: 15 },
+    circle: { width: 12, height: 20 },
+    oval: { width: 21, height: 17 },
+    diamond: { width: 14, height: 20 },
+    hexagon: { width: 16, height: 18 }
+  };
+
+  function openFloorTableModal(table = null) {
+    renderFloorAreaOptions();
+    floorTableId.value = table?.id || '';
+    floorTableName.value = table?.name || '';
+    floorTableArea.value = String(table?.area_id || selectedAreaId || areas[0]?.id || '');
+    floorTableShape.value = table?.shape || 'rectangle';
+    floorTableCapacity.value = table?.capacity || 4;
+    floorTableStatus.value = table?.status || 'available';
+    floorTableModalTitle.textContent = table ? 'Sửa thông tin bàn' : 'Tạo bàn mới';
+    floorTableModalMode.textContent = table ? `Token: ${table.token}` : 'Thêm bàn vào sơ đồ';
+    deleteFloorTableButton.hidden = !table;
+    openFloorModal(floorTableModal);
+    floorTableName.focus();
+  }
+
+  function floorTablePayload() {
+    const current = tables.find((table) => table.id === Number(floorTableId.value));
+    const areaTables = tables.filter((table) => table.area_id === Number(floorTableArea.value));
+    const index = areaTables.length;
+    const shape = floorTableShape.value;
+    const shapeChanged = current && current.shape !== shape;
+    const size = shapeChanged || !current ? floorShapeSizes[shape] : current;
+
+    return {
+      name: floorTableName.value.trim(),
+      area_id: Number(floorTableArea.value),
+      shape,
+      capacity: Number(floorTableCapacity.value || 1),
+      status: floorTableStatus.value,
+      pos_x: current?.pos_x ?? 4 + (index % 4) * 24,
+      pos_y: current?.pos_y ?? 6 + Math.floor(index / 4) * 21,
+      width: size.width,
+      height: size.height,
+      sort_order: current?.sort_order ?? index + 1
+    };
+  }
+
+  async function saveFloorTable(event) {
+    event.preventDefault();
+    setFloorMessage(floorTableMessage, 'Đang lưu...');
+
+    try {
+      const saved = floorTableId.value
+        ? await api.updateTable(floorTableId.value, floorTablePayload())
+        : await api.createTable(floorTablePayload());
+      selectedAreaId = saved.area_id;
+      closeFloorModals();
+      await loadLiveTables();
+    } catch (error) {
+      setFloorMessage(floorTableMessage, error.message, true);
+    }
+  }
+
+  async function removeFloorTable() {
+    const table = tables.find((item) => item.id === Number(floorTableId.value));
+    if (!table || !window.confirm(`Xoá "${table.name}"?`)) {
+      return;
+    }
+
+    try {
+      await api.deleteTable(table.id);
+      closeFloorModals();
+      await loadLiveTables();
+    } catch (error) {
+      setFloorMessage(floorTableMessage, error.message, true);
     }
   }
 
@@ -2112,15 +2516,17 @@
 
   async function selectLiveTable(tableIdValue) {
     selectedLiveTableId = tableIdValue;
-    renderLiveTables();
     showTableDetailScreen();
   }
 
   async function loadLiveTables() {
-    liveTablesGrid.innerHTML = '<p class="empty-state">Đang tải bàn...</p>';
+    floorPlanStage.innerHTML = '<p class="empty-state floor-plan-empty">Đang tải sơ đồ bàn...</p>';
 
     try {
-      tables = await api.getTables();
+      [areas, tables] = await Promise.all([
+        api.getAreas(),
+        api.getTables()
+      ]);
 
       if (selectedLiveTableId && !tables.some((table) => table.id === selectedLiveTableId)) {
         selectedLiveTableId = null;
@@ -2129,11 +2535,11 @@
 
       renderLiveTables();
     } catch (error) {
-      liveTablesGrid.replaceChildren();
+      floorPlanStage.replaceChildren();
       const empty = document.createElement('p');
-      empty.className = 'empty-state';
+      empty.className = 'empty-state floor-plan-empty';
       empty.textContent = error.message;
-      liveTablesGrid.append(empty);
+      floorPlanStage.append(empty);
       resetBillPanel();
     }
   }
@@ -2262,7 +2668,12 @@
     switchTab('liveTablesTab');
   }
 
-  function switchTab(tabId) {
+  function adminTabUrl(tabId) {
+    return tabId === 'liveTablesTab' ? '/admin' : `/admin?tab=${encodeURIComponent(tabId)}`;
+  }
+
+  function switchTab(tabId, options = {}) {
+    const { updateUrl = true } = options;
     tableDetailScreen.hidden = true;
     adminTabs.hidden = false;
 
@@ -2294,6 +2705,10 @@
       loadMenu();
     } else if (tabId === 'restaurantTab') {
       loadRestaurantInfo();
+    }
+
+    if (updateUrl) {
+      window.history.replaceState(null, '', adminTabUrl(tabId));
     }
   }
 
@@ -2370,9 +2785,73 @@
   document.getElementById('resetTableForm').addEventListener('click', resetTableForm);
   document.getElementById('printAllQr').addEventListener('click', printAllQr);
   backToTablesButton.addEventListener('click', showTableManagerScreen);
+  downloadTableOrderQr.addEventListener('click', () => {
+    const table = tables.find((item) => item.id === selectedLiveTableId);
+    if (table) {
+      downloadQr(table, 'order');
+    }
+  });
+  document.getElementById('quickAddAreaButton').addEventListener('click', () => openAreaModal());
+  document.getElementById('editAreaButton').addEventListener('click', () => {
+    const area = currentArea();
+    if (area) {
+      openAreaModal(area);
+    }
+  });
+  document.getElementById('editSelectedAreaButton').addEventListener('click', () => {
+    const area = currentArea();
+    if (area) {
+      openAreaModal(area);
+    }
+  });
+  document.getElementById('newFloorTableButton').addEventListener('click', () => {
+    if (areas.length === 0) {
+      openAreaModal();
+      return;
+    }
+    openFloorTableModal();
+  });
+  document.getElementById('closeAreaModal').addEventListener('click', closeFloorModals);
+  document.getElementById('closeFloorTableModal').addEventListener('click', closeFloorModals);
+  floorModalBackdrop.addEventListener('click', closeFloorModals);
+  floorAreaForm.addEventListener('submit', saveFloorArea);
+  deleteAreaButton.addEventListener('click', removeFloorArea);
+  floorTableForm.addEventListener('submit', saveFloorTable);
+  deleteFloorTableButton.addEventListener('click', removeFloorTable);
+  floorTableSearch.addEventListener('input', renderFloorPlan);
+  floorStatusFilters.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-status]');
+    if (!button) {
+      return;
+    }
+    floorStatusFilter = button.dataset.status;
+    floorStatusFilters.querySelectorAll('[data-status]').forEach((item) => {
+      item.classList.toggle('is-active', item === button);
+    });
+    renderFloorPlan();
+  });
+  floorArrangeMode.addEventListener('change', () => {
+    renderFloorPlan();
+    setFloorMessage(
+      floorSaveStatus,
+      floorArrangeMode.checked ? 'Kéo bàn để thay đổi vị trí.' : ''
+    );
+  });
+  floorGridToggle.addEventListener('click', () => {
+    const showGrid = floorGridToggle.getAttribute('aria-pressed') !== 'true';
+    floorGridToggle.setAttribute('aria-pressed', String(showGrid));
+    floorGridToggle.classList.toggle('is-active', showGrid);
+    floorPlanStage.classList.toggle('without-grid', !showGrid);
+  });
   closeSessionButton.addEventListener('click', handleBillAction);
   window.addEventListener('afterprint', closePrintView);
+  window.addEventListener('resize', updateFloorPlanSize);
   window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !floorModalBackdrop.hidden) {
+      closeFloorModals();
+      return;
+    }
+
     if (event.key === 'Escape' && !itemDisplayMenu.hidden) {
       closeDisplayOptionMenu();
       return;
@@ -2383,14 +2862,32 @@
     }
   });
 
-  document.querySelectorAll('.tab-button').forEach((button) => {
+  document.querySelectorAll('.tab-button[data-tab]').forEach((button) => {
     button.addEventListener('click', () => switchTab(button.dataset.tab));
   });
+
+  const validInitialTabs = ['liveTablesTab', 'menuTab', 'restaurantTab'];
+  const tabFromQuery = new URLSearchParams(window.location.search).get('tab');
+  const tabFromHash = window.location.hash.slice(1);
+  const requestedInitialTab = tabFromQuery || tabFromHash;
+  const initialTab = validInitialTabs.includes(requestedInitialTab)
+    ? requestedInitialTab
+    : 'liveTablesTab';
+  const shouldResetAdminScroll = Boolean(tabFromQuery || tabFromHash);
 
   loadRestaurantInfo();
   loadLiveTables();
   loadCategories();
   loadOptionGroups();
   loadMenu();
+  if (initialTab !== 'liveTablesTab') {
+    switchTab(initialTab, { updateUrl: false });
+  }
+  if (shouldResetAdminScroll) {
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      window.history.replaceState(null, '', adminTabUrl(initialTab));
+    });
+  }
   setupRealtime();
 })();

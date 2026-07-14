@@ -4,7 +4,9 @@ const { emitOrderStatusChanged } = require('../socket');
 const { getBaseUrl } = require('../utils/url');
 
 function listTables(req, res) {
-  res.json(tableService.listTables(getBaseUrl(req)));
+  res.json(tableService.listTables(getBaseUrl(req), {
+    area_id: req.query.area_id
+  }));
 }
 
 function getTableByToken(req, res) {
@@ -22,6 +24,10 @@ function createTablesBulk(req, res) {
 function updateTable(req, res) {
   const id = tableService.normalizeId(req.params.id);
   res.json(tableService.updateTable(id, req.body, getBaseUrl(req)));
+}
+
+function updateTablePositions(req, res) {
+  res.json(tableService.updateTablePositions(req.body, getBaseUrl(req)));
 }
 
 function deleteTable(req, res) {
@@ -82,5 +88,6 @@ module.exports = {
   getTableQr,
   listTables,
   regenerateTableToken,
-  updateTable
+  updateTable,
+  updateTablePositions
 };

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pho Viet - Thống kê</title>
+    <link rel="stylesheet" href="/css/styles.css?v=84">
+    <link rel="stylesheet" href="/admin/statistics.css?v=4">
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" data-restaurant-mark>PV</span>
+        <span>
+          <strong data-restaurant-name>Pho Viet</strong>
+        </span>
+      </div>
+    </header>
+
+    <main class="page-shell admin-page statistics-page">
+      <nav class="admin-tabs" aria-label="Admin">
+        <a class="tab-button" href="/admin">Quản lý bàn</a>
+        <a class="tab-button" href="/admin?tab=menuTab">Menu</a>
+        <a class="tab-button is-active" href="/admin/statistics" aria-current="page">Thống kê</a>
+        <a class="tab-button" href="/admin?tab=restaurantTab">Thông tin quán</a>
+      </nav>
+
+      <h1 class="sr-only">Thống kê doanh thu</h1>
+
+      <section class="statistics-toolbar" aria-label="Bộ lọc thống kê">
+        <div class="statistics-period-tabs" id="statisticsPeriodTabs" role="tablist" aria-label="Khoảng thời gian">
+          <button class="is-active" type="button" data-type="day" role="tab" aria-selected="true">Theo ngày</button>
+          <button type="button" data-type="week" role="tab" aria-selected="false">Theo tuần</button>
+          <button type="button" data-type="month" role="tab" aria-selected="false">Theo tháng</button>
+        </div>
+        <label class="statistics-date-field">
+          <span class="statistics-calendar-icon" aria-hidden="true"></span>
+          <span class="sr-only">Chọn ngày thống kê</span>
+          <input id="statisticsDate" type="date">
+        </label>
+      </section>
+
+      <section class="statistics-revenue-card" aria-labelledby="totalRevenueTitle">
+        <div>
+          <div class="statistics-card-label">
+            <h2 id="totalRevenueTitle">Tổng doanh thu</h2>
+            <span id="statisticsPeriodLabel"></span>
+          </div>
+          <strong class="statistics-revenue-value is-loading" id="totalRevenue">0 đ</strong>
+          <p class="statistics-comparison" id="revenueComparison" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="statistics-ranking-card" aria-labelledby="topItemsTitle">
+        <div class="statistics-ranking-header">
+          <div>
+            <h2 id="topItemsTitle">Top món bán chạy</h2>
+            <p>Sắp xếp theo tổng số lượng đã bán</p>
+          </div>
+          <span class="statistics-top-limit">Top 10</span>
+        </div>
+
+        <div class="statistics-list" id="statisticsList" aria-live="polite">
+          <div class="statistics-skeleton-row"><span></span><span></span><span></span></div>
+          <div class="statistics-skeleton-row"><span></span><span></span><span></span></div>
+          <div class="statistics-skeleton-row"><span></span><span></span><span></span></div>
+          <div class="statistics-skeleton-row"><span></span><span></span><span></span></div>
+        </div>
+        <p class="statistics-message" id="statisticsMessage" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/api.js?v=10"></script>
+    <script src="/admin/statistics.js?v=1"></script>
+  </body>
+</html>

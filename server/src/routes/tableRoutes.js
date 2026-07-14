@@ -7,6 +7,7 @@ const router = express.Router();
 router.get('/', tableController.listTables);
 router.post('/', tableController.createTable);
 router.post('/bulk', tableController.createTablesBulk);
+router.patch('/positions', tableController.updateTablePositions);
 router.get('/qr/all', asyncHandler(tableController.getAllTableQr));
 router.get('/token/:token', tableController.getTableByToken);
 router.get('/:id/current-session', tableController.getCurrentSession);

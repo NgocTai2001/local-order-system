@@ -215,10 +215,18 @@ function listOrders({ status, kitchen = false } = {}) {
 function resolveTable(input) {
   if (input.table_id !== undefined && input.table_id !== null && input.table_id !== '') {
     const tableId = normalizeId(input.table_id, 'Bàn');
-    const table = db.prepare('SELECT id, name, token FROM tables WHERE id = ?').get(tableId);
+    const table = db.prepare('SELECT id, name, token, status FROM tables WHERE id = ?').get(tableId);
 
     if (!table) {
       throw httpError(400, 'Bàn không tồn tại.');
+    }
+
+    if (table.status === 'maintenance') {
+      throw httpError(409, 'Bàn đang bảo trì, chưa thể gọi món.');
+    }
+
+    if (table.status === 'reserved') {
+      throw httpError(409, 'Bàn đang được đặt trước, vui lòng liên hệ nhân viên.');
     }
 
     return table;
@@ -230,10 +238,18 @@ function resolveTable(input) {
     throw httpError(400, 'Vui lòng quét QR trên bàn để gọi món.');
   }
 
-  const table = db.prepare('SELECT id, name, token FROM tables WHERE token = ?').get(tableToken);
+  const table = db.prepare('SELECT id, name, token, status FROM tables WHERE token = ?').get(tableToken);
 
   if (!table) {
     throw httpError(400, 'Invalid table token');
+  }
+
+  if (table.status === 'maintenance') {
+    throw httpError(409, 'Bàn đang bảo trì, chưa thể gọi món.');
+  }
+
+  if (table.status === 'reserved') {
+    throw httpError(409, 'Bàn đang được đặt trước, vui lòng liên hệ nhân viên.');
   }
 
   return table;
@@ -443,7 +459,7 @@ function createOrder(input) {
 
     db.prepare(`
       UPDATE tables
-      SET status = 'occupied',
+      SET status = 'in_use',
           updated_at = datetime('now')
       WHERE id = ?
     `).run(table.id);
@@ -469,15 +485,6 @@ function updateOrderStatus(id, status) {
   }
 
   const order = getOrderById(id);
-
-  if (order.table_id && nextStatus === 'paid') {
-    db.prepare(`
-      UPDATE tables
-      SET status = 'paid',
-          updated_at = datetime('now')
-      WHERE id = ?
-    `).run(order.table_id);
-  }
 
   return getOrderById(id);
 }

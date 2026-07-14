@@ -20,18 +20,135 @@ function ensureColumn(table, column, definition) {
   }
 }
 
-function createTablesTable() {
+function createAreasTable() {
   db.exec(`
-    CREATE TABLE IF NOT EXISTS tables (
+    CREATE TABLE IF NOT EXISTS areas (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      token TEXT NOT NULL UNIQUE,
-      status TEXT NOT NULL DEFAULT 'empty'
-        CHECK (status IN ('empty', 'occupied', 'payment_requested', 'paid')),
+      description TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  db.exec(`
+    INSERT INTO areas (name, description, sort_order, is_active)
+    SELECT 'Khu vực chung', 'Khu vực mặc định', 1, 1
+    WHERE NOT EXISTS (SELECT 1 FROM areas);
+  `);
+}
+
+function createTablesTable() {
+  const exists = tableExists('tables');
+  const needsStatusRebuild = exists && !tableSql('tables').includes("'available'");
+  const needsPositionBackfill = needsStatusRebuild || (exists && !columnExists('tables', 'pos_x'));
+  const defaultAreaId = db.prepare('SELECT id FROM areas ORDER BY sort_order ASC, id ASC LIMIT 1').get().id;
+
+  if (needsStatusRebuild) {
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      CREATE TABLE tables_floor_plan (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        area_id INTEGER,
+        name TEXT NOT NULL,
+        shape TEXT NOT NULL DEFAULT 'rectangle'
+          CHECK (shape IN ('rectangle', 'circle', 'oval', 'diamond', 'hexagon')),
+        capacity INTEGER NOT NULL DEFAULT 4 CHECK (capacity > 0),
+        pos_x REAL NOT NULL DEFAULT 0,
+        pos_y REAL NOT NULL DEFAULT 0,
+        width REAL NOT NULL DEFAULT 18 CHECK (width > 0),
+        height REAL NOT NULL DEFAULT 15 CHECK (height > 0),
+        status TEXT NOT NULL DEFAULT 'available'
+          CHECK (status IN ('available', 'in_use', 'reserved', 'maintenance')),
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        token TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (area_id) REFERENCES areas(id)
+      );
+
+      INSERT INTO tables_floor_plan (
+        id, area_id, name, shape, capacity, pos_x, pos_y, width, height,
+        status, sort_order, token, created_at, updated_at
+      )
+      SELECT
+        id,
+        ${defaultAreaId},
+        name,
+        'rectangle',
+        4,
+        0,
+        0,
+        18,
+        15,
+        CASE
+          WHEN status IN ('occupied', 'payment_requested') THEN 'in_use'
+          WHEN status = 'empty' OR status = 'paid' THEN 'available'
+          ELSE 'available'
+        END,
+        id,
+        token,
+        COALESCE(created_at, datetime('now')),
+        COALESCE(updated_at, datetime('now'))
+      FROM tables;
+
+      DROP TABLE tables;
+      ALTER TABLE tables_floor_plan RENAME TO tables;
+    `);
+    db.pragma('foreign_keys = ON');
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tables (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      area_id INTEGER,
+      name TEXT NOT NULL,
+      shape TEXT NOT NULL DEFAULT 'rectangle'
+        CHECK (shape IN ('rectangle', 'circle', 'oval', 'diamond', 'hexagon')),
+      capacity INTEGER NOT NULL DEFAULT 4 CHECK (capacity > 0),
+      pos_x REAL NOT NULL DEFAULT 0,
+      pos_y REAL NOT NULL DEFAULT 0,
+      width REAL NOT NULL DEFAULT 18 CHECK (width > 0),
+      height REAL NOT NULL DEFAULT 15 CHECK (height > 0),
+      token TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL DEFAULT 'available'
+        CHECK (status IN ('available', 'in_use', 'reserved', 'maintenance')),
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (area_id) REFERENCES areas(id)
+    );
+  `);
+
+  ensureColumn('tables', 'area_id', 'INTEGER');
+  ensureColumn('tables', 'shape', "TEXT NOT NULL DEFAULT 'rectangle'");
+  ensureColumn('tables', 'capacity', 'INTEGER NOT NULL DEFAULT 4');
+  ensureColumn('tables', 'pos_x', 'REAL NOT NULL DEFAULT 0');
+  ensureColumn('tables', 'pos_y', 'REAL NOT NULL DEFAULT 0');
+  ensureColumn('tables', 'width', 'REAL NOT NULL DEFAULT 18');
+  ensureColumn('tables', 'height', 'REAL NOT NULL DEFAULT 15');
+  ensureColumn('tables', 'sort_order', 'INTEGER NOT NULL DEFAULT 0');
+
+  db.prepare('UPDATE tables SET area_id = ? WHERE area_id IS NULL').run(defaultAreaId);
+
+  if (needsPositionBackfill) {
+    const rows = db.prepare('SELECT id FROM tables ORDER BY id ASC').all();
+    const updatePosition = db.prepare(`
+      UPDATE tables
+      SET pos_x = ?, pos_y = ?, width = 18, height = 15, sort_order = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `);
+    const arrange = db.transaction(() => {
+      rows.forEach((table, index) => {
+        const column = index % 4;
+        const row = Math.floor(index / 4);
+        updatePosition.run(4 + column * 24, 6 + row * 21, index + 1, table.id);
+      });
+    });
+    arrange();
+  }
 }
 
 function createMenuCategoriesTable() {
@@ -552,6 +669,7 @@ function backfillOpenSessions() {
 }
 
 function runMigrations() {
+  createAreasTable();
   createTablesTable();
   createTableSessionsTable();
   createRestaurantInfoTable();
@@ -588,8 +706,17 @@ function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_tables_token
       ON tables(token);
 
+    CREATE INDEX IF NOT EXISTS idx_tables_area_sort
+      ON tables(area_id, sort_order);
+
+    CREATE INDEX IF NOT EXISTS idx_areas_active_sort
+      ON areas(is_active, sort_order);
+
     CREATE INDEX IF NOT EXISTS idx_orders_status_created_at
       ON orders(status, created_at);
+
+    CREATE INDEX IF NOT EXISTS idx_orders_status_updated_at
+      ON orders(status, updated_at);
 
     CREATE INDEX IF NOT EXISTS idx_orders_table_id
       ON orders(table_id);

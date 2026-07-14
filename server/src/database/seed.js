@@ -114,16 +114,26 @@ function seedTables() {
     return;
   }
 
+  const areaId = db.prepare('SELECT id FROM areas ORDER BY sort_order ASC, id ASC LIMIT 1').get().id;
   const insert = db.prepare(`
-    INSERT INTO tables (name, token, status)
-    VALUES (@name, @token, 'empty')
+    INSERT INTO tables (
+      area_id, name, token, status, shape, capacity, pos_x, pos_y, width, height, sort_order
+    )
+    VALUES (
+      @area_id, @name, @token, 'available', 'rectangle', 4,
+      @pos_x, @pos_y, 18, 15, @sort_order
+    )
   `);
 
   const insertMany = db.transaction(() => {
     for (let index = 1; index <= 10; index += 1) {
       insert.run({
+        area_id: areaId,
         name: `Bàn ${String(index).padStart(2, '0')}`,
-        token: createUniqueTableToken()
+        token: createUniqueTableToken(),
+        pos_x: 4 + ((index - 1) % 4) * 24,
+        pos_y: 6 + Math.floor((index - 1) / 4) * 21,
+        sort_order: index
       });
     }
   });

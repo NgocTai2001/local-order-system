@@ -171,8 +171,35 @@
         body: JSON.stringify({ status })
       });
     },
-    getTables() {
-      return request('/api/tables');
+    getStatistics(type = 'day', date = '') {
+      const params = new URLSearchParams({ type });
+      if (date) {
+        params.set('date', date);
+      }
+      return request(`/api/statistics?${params.toString()}`);
+    },
+    getAreas() {
+      return request('/api/areas');
+    },
+    createArea(payload) {
+      return request('/api/areas', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    },
+    updateArea(id, payload) {
+      return request(`/api/areas/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+    },
+    deleteArea(id) {
+      return request(`/api/areas/${id}`, {
+        method: 'DELETE'
+      });
+    },
+    getTables(areaId) {
+      return request(`/api/tables${areaId ? `?area_id=${encodeURIComponent(areaId)}` : ''}`);
     },
     getTableByToken(token) {
       return request(`/api/tables/token/${encodeURIComponent(token)}`);
@@ -204,6 +231,12 @@
       return request(`/api/tables/${id}`, {
         method: 'PUT',
         body: JSON.stringify(payload)
+      });
+    },
+    updateTablePositions(positions) {
+      return request('/api/tables/positions', {
+        method: 'PATCH',
+        body: JSON.stringify({ positions })
       });
     },
     deleteTable(id) {
