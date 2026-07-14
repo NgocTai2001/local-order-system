@@ -51,7 +51,7 @@ docker compose down
 - Customer QR: <http://localhost:8080/t/TOKEN_CUA_BAN>
 - Kitchen: <http://localhost:8080/kitchen>
 - Admin: <http://localhost:8080/admin>
-- Thống kê: <http://localhost:8080/admin/statistics>
+- Thống kê: <http://localhost:8080/admin/statistics.html>
 
 Vào Admin, tab `Quản lý bàn`, chọn một bàn để xem link và tải QR order thật của bàn đó.
 
@@ -102,7 +102,7 @@ Bếp, lịch sử món đã đặt và bill Admin đều hiển thị snapshot 
 
 ## Thống kê doanh thu
 
-Trang `/admin/statistics` chỉ sử dụng các order có trạng thái `paid`. Doanh thu được tính từ `order_items.subtotal`; top món được tổng hợp bằng `SUM(quantity)` và `GROUP BY` trực tiếp trong SQLite, giới hạn 10 món.
+Trang `/admin/statistics.html` chỉ sử dụng các order có trạng thái `paid`. Doanh thu được tính từ `order_items.subtotal`; top món được tổng hợp bằng `SUM(quantity)` và `GROUP BY` trực tiếp trong SQLite, giới hạn 10 món.
 
 Dashboard hỗ trợ:
 

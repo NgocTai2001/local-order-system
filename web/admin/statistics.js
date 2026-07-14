@@ -211,7 +211,7 @@
       statisticsMessage.textContent = '';
 
       const urlDate = currentType === 'month' ? currentDate.slice(0, 7) : currentDate;
-      window.history.replaceState(null, '', `/admin/statistics?type=${currentType}&date=${urlDate}`);
+      window.history.replaceState(null, '', `/admin/statistics.html?type=${currentType}&date=${urlDate}`);
       updateControls();
     } catch (error) {
       if (requestId !== requestSequence) {
