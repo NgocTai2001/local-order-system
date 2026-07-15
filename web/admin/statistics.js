@@ -2,6 +2,7 @@
   const api = window.orderApi;
   const periodTabs = document.getElementById('statisticsPeriodTabs');
   const dateInput = document.getElementById('statisticsDate');
+  const dateDisplay = document.getElementById('statisticsDateDisplay');
   const periodLabel = document.getElementById('statisticsPeriodLabel');
   const totalRevenue = document.getElementById('totalRevenue');
   const revenueComparison = document.getElementById('revenueComparison');
@@ -51,6 +52,20 @@
     }
 
     return fullDate.format(start);
+  }
+
+  function formatPickerLabel() {
+    const date = parseLocalDate(currentDate);
+    if (currentType === 'month') {
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      return `${month}/${date.getFullYear()}`;
+    }
+
+    return new Intl.DateTimeFormat('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).format(date);
   }
 
   function initials(name) {
@@ -181,15 +196,11 @@
       button.setAttribute('aria-selected', String(active));
     });
 
-    if (currentType === 'month') {
-      dateInput.type = 'month';
-      dateInput.value = currentDate.slice(0, 7);
-    } else {
-      dateInput.type = 'date';
-      dateInput.value = /^\d{4}-\d{2}-\d{2}$/.test(currentDate)
-        ? currentDate
-        : `${currentDate.slice(0, 7)}-01`;
-    }
+    dateInput.type = 'date';
+    dateInput.value = /^\d{4}-\d{2}-\d{2}$/.test(currentDate)
+      ? currentDate
+      : `${currentDate.slice(0, 7)}-01`;
+    dateDisplay.textContent = formatPickerLabel();
   }
 
   async function loadStatistics() {
@@ -210,8 +221,7 @@
       renderItems(result.topItems || []);
       statisticsMessage.textContent = '';
 
-      const urlDate = currentType === 'month' ? currentDate.slice(0, 7) : currentDate;
-      window.history.replaceState(null, '', `/admin/statistics.html?type=${currentType}&date=${urlDate}`);
+      window.history.replaceState(null, '', `/admin/statistics.html?type=${currentType}&date=${currentDate}`);
       updateControls();
     } catch (error) {
       if (requestId !== requestSequence) {
@@ -250,7 +260,7 @@
     if (!dateInput.value) {
       return;
     }
-    currentDate = currentType === 'month' ? `${dateInput.value}-01` : dateInput.value;
+    currentDate = currentType === 'month' ? `${dateInput.value.slice(0, 7)}-01` : dateInput.value;
     loadStatistics();
   });
 

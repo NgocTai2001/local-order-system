@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 
+const adminAuthRoutes = require('./routes/adminAuthRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const areaRoutes = require('./routes/areaRoutes');
 const menuRoutes = require('./routes/menuRoutes');
@@ -21,6 +22,7 @@ function createApp() {
     res.json({ ok: true });
   });
 
+  app.use('/api/admin-auth', adminAuthRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/areas', areaRoutes);
   app.use('/api/menu', menuRoutes);

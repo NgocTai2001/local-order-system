@@ -2503,7 +2503,7 @@
     setBillMessage('');
 
     try {
-      const bill = await api.getCurrentBill(table.id);
+      const bill = await api.getAdminCurrentBill(table.id);
       renderBill(bill);
     } catch (error) {
       billMeta.textContent = error.message;
@@ -2618,7 +2618,7 @@
 
     try {
       setBillMessage('Đang thanh toán...');
-      const closedBill = await api.closeTableSession(table.id);
+      const closedBill = await api.closeAdminTableSession(table.id);
       await loadLiveTables();
       renderBill(closedBill);
       setBillMessage(`Đã thanh toán ${table.name}.`);
@@ -2635,7 +2635,7 @@
 
     try {
       setBillMessage(`Đang xóa đơn #${order.id}...`);
-      await api.updateOrder(order.id, 'cancelled');
+      await api.updateAdminOrder(order.id, 'cancelled');
       await loadLiveTables();
       await loadSelectedBill();
       setBillMessage(`Đã xóa đơn #${order.id}.`);

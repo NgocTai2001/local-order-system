@@ -1,14 +1,34 @@
 (function () {
-  async function request(path, options) {
+  async function adminAuthHeader(path, options) {
+    if (!window.adminAuth) {
+      return {};
+    }
+
+    await window.adminAuth.ready;
+    if (!window.adminAuth.shouldAuthorize(path, options?.method || 'GET')) {
+      return {};
+    }
+
+    const token = await window.adminAuth.getAccessToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  async function request(path, options = {}) {
+    const authHeader = await adminAuthHeader(path, options);
     const response = await fetch(path, {
+      ...options,
       headers: {
-        'Content-Type': 'application/json'
-      },
-      ...options
+        'Content-Type': 'application/json',
+        ...authHeader,
+        ...(options.headers || {})
+      }
     });
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
+      if (response.status === 401 && window.adminAuth?.redirectToLogin) {
+        window.adminAuth.redirectToLogin('expired');
+      }
       throw new Error(body.error || `HTTP ${response.status}`);
     }
 
@@ -171,6 +191,12 @@
         body: JSON.stringify({ status })
       });
     },
+    updateAdminOrder(id, status) {
+      return request(`/api/admin/orders/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status })
+      });
+    },
     getStatistics(type = 'day', date = '') {
       const params = new URLSearchParams({ type });
       if (date) {
@@ -210,8 +236,16 @@
     getCurrentBill(tableId) {
       return request(`/api/tables/${tableId}/current-bill`);
     },
+    getAdminCurrentBill(tableId) {
+      return request(`/api/admin/tables/${tableId}/current-bill`);
+    },
     closeTableSession(tableId) {
       return request(`/api/tables/${tableId}/close-session`, {
+        method: 'PATCH'
+      });
+    },
+    closeAdminTableSession(tableId) {
+      return request(`/api/admin/tables/${tableId}/close-session`, {
         method: 'PATCH'
       });
     },

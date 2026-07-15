@@ -4,17 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pho Viet - Thống kê</title>
-    <link rel="stylesheet" href="/css/styles.css?v=84">
-    <link rel="stylesheet" href="/admin/statistics.css?v=4">
+    <link rel="stylesheet" href="/css/styles.css?v=85">
+    <link rel="stylesheet" href="/admin/statistics.css?v=7">
   </head>
   <body>
-    <header class="app-header">
+    <header class="app-header admin-app-header">
       <div class="brand">
         <span class="brand-mark" data-restaurant-mark>PV</span>
         <span>
           <strong data-restaurant-name>Pho Viet</strong>
         </span>
       </div>
+      <button class="ghost-button admin-logout-button" type="button" data-admin-logout hidden>Đăng xuất</button>
     </header>
 
     <main class="page-shell admin-page statistics-page">
@@ -34,9 +35,17 @@
           <button type="button" data-type="month" role="tab" aria-selected="false">Theo tháng</button>
         </div>
         <label class="statistics-date-field">
-          <span class="statistics-calendar-icon" aria-hidden="true"></span>
+          <span class="statistics-calendar-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M7 3v4"></path>
+              <path d="M17 3v4"></path>
+              <path d="M4 9h16"></path>
+              <rect x="4" y="5" width="16" height="16" rx="3"></rect>
+            </svg>
+          </span>
           <span class="sr-only">Chọn ngày thống kê</span>
           <input id="statisticsDate" type="date">
+          <span class="statistics-date-display" id="statisticsDateDisplay" aria-hidden="true"></span>
         </label>
       </section>
 
@@ -70,8 +79,11 @@
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/js/admin-auth.js?v=1"></script>
+    <script>window.adminAuth.requireAdmin().catch(() => {});</script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/api.js?v=10"></script>
-    <script src="/admin/statistics.js?v=2"></script>
+    <script src="/js/api.js?v=11"></script>
+    <script src="/admin/statistics.js?v=6"></script>
   </body>
 </html>
