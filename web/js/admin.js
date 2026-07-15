@@ -2046,8 +2046,9 @@
   function updateFloorPlanSize() {
     const viewportWidth = Math.max(floorPlanViewport.clientWidth - 2, 320);
     const baseWidth = Math.max(viewportWidth, 900);
+    const stageHeight = window.matchMedia('(max-width: 560px)').matches ? 420 : 560;
     floorPlanStage.style.width = `${Math.round(baseWidth)}px`;
-    floorPlanStage.style.height = '560px';
+    floorPlanStage.style.height = `${stageHeight}px`;
   }
 
   async function savePendingFloorPositions() {

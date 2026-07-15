@@ -4167,9 +4167,12 @@ th {
   .floor-plan-filter-bar {
     align-items: stretch;
     flex-direction: column;
+    justify-content: flex-start;
   }
 
+  .floor-plan-area-title,
   .floor-plan-view-tools {
+    width: 100%;
     justify-content: space-between;
   }
 
@@ -4178,9 +4181,11 @@ th {
   }
 
   .floor-status-filters {
+    flex: 0 0 auto;
     flex-wrap: nowrap;
     overflow-x: auto;
     padding-bottom: 3px;
+    width: 100%;
   }
 
   .floor-filter-button {
@@ -4193,7 +4198,7 @@ th {
   }
 
   .floor-plan-viewport {
-    min-height: 500px;
+    min-height: 420px;
   }
 
   .floor-table-edit {
