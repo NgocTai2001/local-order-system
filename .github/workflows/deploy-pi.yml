@@ -51,6 +51,11 @@ jobs:
             --build \
             --remove-orphans
 
+      - name: Restart Nginx reverse proxy
+        working-directory: /home/pi/project/local-order-system
+        run: |
+          docker compose restart nginx
+
       - name: Show container status
         working-directory: /home/pi/project/local-order-system
         run: |
